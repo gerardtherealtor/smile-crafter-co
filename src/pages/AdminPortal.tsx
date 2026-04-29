@@ -103,8 +103,9 @@ const AdminPortal = () => {
       subtitle={`Week of ${formatDate(monday)} – ${formatDate(sunday)}`}
     >
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex-wrap h-auto">
           <TabsTrigger value="week" className="font-display tracking-wider"><Users className="h-4 w-4 mr-1.5" />Crew Week</TabsTrigger>
+          <TabsTrigger value="roster" className="font-display tracking-wider"><ClipboardList className="h-4 w-4 mr-1.5" />Roster</TabsTrigger>
           <TabsTrigger value="jobs" className="font-display tracking-wider"><Briefcase className="h-4 w-4 mr-1.5" />Jobs</TabsTrigger>
           <TabsTrigger value="reports" className="font-display tracking-wider"><FileDown className="h-4 w-4 mr-1.5" />Reports</TabsTrigger>
         </TabsList>
