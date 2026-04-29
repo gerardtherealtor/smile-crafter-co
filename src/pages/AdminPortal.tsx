@@ -277,4 +277,77 @@ const JobsManager = ({ jobs, reload }: { jobs: Job[]; reload: () => void }) => {
   );
 };
 
+const RosterManager = ({ roster, reload }: { roster: RosterRow[]; reload: () => void }) => {
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    const { error } = await supabase.from("roster").insert({ full_name: name.trim() });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setName(""); toast.success("Added to roster"); reload();
+  };
+
+  const toggle = async (r: RosterRow) => {
+    const { error } = await supabase.from("roster").update({ is_active: !r.is_active }).eq("id", r.id);
+    if (error) toast.error(error.message); else reload();
+  };
+
+  const remove = async (r: RosterRow) => {
+    if (!confirm(`Remove ${r.full_name} from the roster?`)) return;
+    const { error } = await supabase.from("roster").delete().eq("id", r.id);
+    if (error) toast.error(error.message); else { toast.success("Removed"); reload(); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-deep">
+        <p className="text-sm text-muted-foreground mb-3">
+          Preloaded crew names. Each employee still needs to sign up at <span className="text-foreground font-mono">/auth</span> using their own email + password to clock in.
+        </p>
+        <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-3">
+          <Input placeholder="Last, First" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
+          <Button type="submit" disabled={busy} className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
+            <Plus className="h-4 w-4 mr-1.5" /> Add
+          </Button>
+        </form>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card shadow-deep overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead className="text-right">Status</TableHead>
+              <TableHead className="text-right">Remove</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {roster.length === 0 ? (
+              <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No roster entries.</TableCell></TableRow>
+            ) : roster.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="font-medium">{r.full_name}</TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant={r.is_active ? "outline" : "secondary"} onClick={() => toggle(r)}>
+                    {r.is_active ? "Active" : "Inactive"}
+                  </Button>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="ghost" onClick={() => remove(r)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
+
 export default AdminPortal;
