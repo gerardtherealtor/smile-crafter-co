@@ -11,12 +11,13 @@ import {
 import {
   formatDate, formatHours, splitOvertime, weekEnd, weekStart,
 } from "@/lib/time";
-import { Briefcase, FileDown, Mail, Plus, Users } from "lucide-react";
+import { Briefcase, ClipboardList, FileDown, Mail, Plus, Trash2, Users } from "lucide-react";
 
 interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean }
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
 interface EntryRow { user_id: string; hours: number; work_date: string }
 interface ReportRow { id: string; week_start: string; week_end: string; pdf_path: string | null; total_regular_hours: number; total_overtime_hours: number; generated_at: string }
+interface RosterRow { id: string; full_name: string; is_active: boolean; linked_profile_id: string | null }
 
 const AdminPortal = () => {
   const [tab, setTab] = useState("week");
