@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  computeHours, formatDate, formatHours, splitOvertime,
+  computeHours, formatDate, formatHours, formatTime12, splitOvertime,
   todayISO, weekEnd, weekStart,
 } from "@/lib/time";
 import { Clock, Save, Calendar } from "lucide-react";
