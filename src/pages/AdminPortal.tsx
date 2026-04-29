@@ -25,6 +25,7 @@ const AdminPortal = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
+  const [roster, setRoster] = useState<RosterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
@@ -33,7 +34,7 @@ const AdminPortal = () => {
 
   const load = async () => {
     setLoading(true);
-    const [p, j, e, r] = await Promise.all([
+    const [p, j, e, r, ro] = await Promise.all([
       supabase.from("profiles").select("id,full_name,email,phone,is_active").order("full_name"),
       supabase.from("jobs").select("id,name,address,is_active").order("name"),
       supabase.from("time_entries")
@@ -41,11 +42,13 @@ const AdminPortal = () => {
         .gte("work_date", monday).lte("work_date", sunday),
       supabase.from("weekly_reports").select("id,week_start,week_end,pdf_path,total_regular_hours,total_overtime_hours,generated_at")
         .order("week_start", { ascending: false }).limit(20),
+      supabase.from("roster").select("id,full_name,is_active,linked_profile_id").order("full_name"),
     ]);
     if (p.data) setProfiles(p.data as Profile[]);
     if (j.data) setJobs(j.data as Job[]);
     if (e.data) setEntries(e.data as EntryRow[]);
     if (r.data) setReports(r.data as ReportRow[]);
+    if (ro.data) setRoster(ro.data as RosterRow[]);
     setLoading(false);
   };
 
