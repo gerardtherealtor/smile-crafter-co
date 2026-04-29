@@ -11,12 +11,13 @@ import {
 import {
   formatDate, formatHours, splitOvertime, weekEnd, weekStart,
 } from "@/lib/time";
-import { Briefcase, FileDown, Mail, Plus, Users } from "lucide-react";
+import { Briefcase, ClipboardList, FileDown, Mail, Plus, Trash2, Users } from "lucide-react";
 
 interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean }
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
 interface EntryRow { user_id: string; hours: number; work_date: string }
 interface ReportRow { id: string; week_start: string; week_end: string; pdf_path: string | null; total_regular_hours: number; total_overtime_hours: number; generated_at: string }
+interface RosterRow { id: string; full_name: string; is_active: boolean; linked_profile_id: string | null }
 
 const AdminPortal = () => {
   const [tab, setTab] = useState("week");
@@ -24,6 +25,7 @@ const AdminPortal = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
+  const [roster, setRoster] = useState<RosterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
@@ -32,7 +34,7 @@ const AdminPortal = () => {
 
   const load = async () => {
     setLoading(true);
-    const [p, j, e, r] = await Promise.all([
+    const [p, j, e, r, ro] = await Promise.all([
       supabase.from("profiles").select("id,full_name,email,phone,is_active").order("full_name"),
       supabase.from("jobs").select("id,name,address,is_active").order("name"),
       supabase.from("time_entries")
@@ -40,11 +42,13 @@ const AdminPortal = () => {
         .gte("work_date", monday).lte("work_date", sunday),
       supabase.from("weekly_reports").select("id,week_start,week_end,pdf_path,total_regular_hours,total_overtime_hours,generated_at")
         .order("week_start", { ascending: false }).limit(20),
+      supabase.from("roster").select("id,full_name,is_active,linked_profile_id").order("full_name"),
     ]);
     if (p.data) setProfiles(p.data as Profile[]);
     if (j.data) setJobs(j.data as Job[]);
     if (e.data) setEntries(e.data as EntryRow[]);
     if (r.data) setReports(r.data as ReportRow[]);
+    if (ro.data) setRoster(ro.data as RosterRow[]);
     setLoading(false);
   };
 
@@ -99,8 +103,9 @@ const AdminPortal = () => {
       subtitle={`Week of ${formatDate(monday)} – ${formatDate(sunday)}`}
     >
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex-wrap h-auto">
           <TabsTrigger value="week" className="font-display tracking-wider"><Users className="h-4 w-4 mr-1.5" />Crew Week</TabsTrigger>
+          <TabsTrigger value="roster" className="font-display tracking-wider"><ClipboardList className="h-4 w-4 mr-1.5" />Roster</TabsTrigger>
           <TabsTrigger value="jobs" className="font-display tracking-wider"><Briefcase className="h-4 w-4 mr-1.5" />Jobs</TabsTrigger>
           <TabsTrigger value="reports" className="font-display tracking-wider"><FileDown className="h-4 w-4 mr-1.5" />Reports</TabsTrigger>
         </TabsList>
@@ -154,6 +159,10 @@ const AdminPortal = () => {
               </Table>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="roster">
+          <RosterManager roster={roster} reload={load} />
         </TabsContent>
 
         <TabsContent value="jobs">
@@ -257,6 +266,79 @@ const JobsManager = ({ jobs, reload }: { jobs: Job[]; reload: () => void }) => {
                 <TableCell className="text-right">
                   <Button size="sm" variant={j.is_active ? "outline" : "secondary"} onClick={() => toggle(j)}>
                     {j.is_active ? "Active" : "Inactive"}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
+
+const RosterManager = ({ roster, reload }: { roster: RosterRow[]; reload: () => void }) => {
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    const { error } = await supabase.from("roster").insert({ full_name: name.trim() });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setName(""); toast.success("Added to roster"); reload();
+  };
+
+  const toggle = async (r: RosterRow) => {
+    const { error } = await supabase.from("roster").update({ is_active: !r.is_active }).eq("id", r.id);
+    if (error) toast.error(error.message); else reload();
+  };
+
+  const remove = async (r: RosterRow) => {
+    if (!confirm(`Remove ${r.full_name} from the roster?`)) return;
+    const { error } = await supabase.from("roster").delete().eq("id", r.id);
+    if (error) toast.error(error.message); else { toast.success("Removed"); reload(); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-deep">
+        <p className="text-sm text-muted-foreground mb-3">
+          Preloaded crew names. Each employee still needs to sign up at <span className="text-foreground font-mono">/auth</span> using their own email + password to clock in.
+        </p>
+        <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-3">
+          <Input placeholder="Last, First" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
+          <Button type="submit" disabled={busy} className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
+            <Plus className="h-4 w-4 mr-1.5" /> Add
+          </Button>
+        </form>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card shadow-deep overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead className="text-right">Status</TableHead>
+              <TableHead className="text-right">Remove</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {roster.length === 0 ? (
+              <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No roster entries.</TableCell></TableRow>
+            ) : roster.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="font-medium">{r.full_name}</TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant={r.is_active ? "outline" : "secondary"} onClick={() => toggle(r)}>
+                    {r.is_active ? "Active" : "Inactive"}
+                  </Button>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="ghost" onClick={() => remove(r)}>
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </TableCell>
               </TableRow>

@@ -71,6 +71,33 @@ export type Database = {
         }
         Relationships: []
       }
+      roster: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          is_active: boolean
+          linked_profile_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          linked_profile_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          linked_profile_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       time_entries: {
         Row: {
           break_minutes: number
