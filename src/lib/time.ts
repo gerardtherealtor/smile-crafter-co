@@ -56,3 +56,15 @@ export const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const formatHours = (n: number) =>
   n.toFixed(2).replace(/\.00$/, ".00");
+
+/** Convert HH:MM or HH:MM:SS into 12-hour format like "7:00 AM". */
+export const formatTime12 = (t: string) => {
+  if (!t) return "";
+  const [hStr, mStr] = t.split(":");
+  let h = Number(hStr);
+  const m = Number(mStr ?? 0);
+  const period = h >= 12 ? "PM" : "AM";
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${String(m).padStart(2, "0")} ${period}`;
+};
