@@ -161,6 +161,10 @@ const AdminPortal = () => {
           </div>
         </TabsContent>
 
+        <TabsContent value="roster">
+          <RosterManager roster={roster} reload={load} />
+        </TabsContent>
+
         <TabsContent value="jobs">
           <JobsManager jobs={jobs} reload={load} />
         </TabsContent>
