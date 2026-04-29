@@ -313,6 +313,14 @@ const EmployeePortal = () => {
               <Stat label="Regular" value={formatHours(totals.regular)} />
               <Stat label="Overtime" value={formatHours(totals.overtime)} accent />
             </div>
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <Button type="button" variant="outline" onClick={exportCsv} disabled={entries.length === 0} className="font-display tracking-wider">
+                <FileDown className="h-4 w-4 mr-1.5" /> CSV
+              </Button>
+              <Button type="button" variant="outline" onClick={exportPdf} disabled={entries.length === 0} className="font-display tracking-wider">
+                <FileText className="h-4 w-4 mr-1.5" /> PDF
+              </Button>
+            </div>
           </div>
 
           <div className="rounded-xl border border-border bg-card p-5 shadow-deep">
