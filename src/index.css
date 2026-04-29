@@ -2,95 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Dwayne Noe Construction — Dark Sapphire + Warmed Maple Wood + Black */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Dark sapphire base */
+    --background: 224 60% 7%;
+    --foreground: 38 30% 92%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 224 50% 10%;
+    --card-foreground: 38 30% 94%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 224 55% 9%;
+    --popover-foreground: 38 30% 94%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Sapphire primary */
+    --primary: 222 85% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 222 95% 68%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Maple wood accent (warm amber/caramel) */
+    --secondary: 32 65% 22%;
+    --secondary-foreground: 38 80% 90%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --maple: 33 78% 56%;
+    --maple-foreground: 224 70% 8%;
+    --maple-deep: 28 65% 38%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --muted: 224 35% 15%;
+    --muted-foreground: 220 15% 68%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 33 78% 56%;
+    --accent-foreground: 224 70% 8%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    --border: 224 35% 18%;
+    --input: 224 35% 14%;
+    --ring: 222 85% 60%;
 
-    --sidebar-background: 0 0% 98%;
+    --radius: 0.625rem;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Gradients */
+    --gradient-sapphire: linear-gradient(135deg, hsl(224 70% 8%) 0%, hsl(222 60% 18%) 50%, hsl(220 50% 12%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(224 70% 6% / 0.55) 0%, hsl(224 80% 5% / 0.85) 100%);
+    --gradient-maple: linear-gradient(135deg, hsl(33 78% 56%) 0%, hsl(28 65% 42%) 100%);
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Shadows */
+    --shadow-deep: 0 20px 50px -15px hsl(0 0% 0% / 0.6);
+    --shadow-glow: 0 0 50px -10px hsl(var(--primary) / 0.45);
+    --shadow-maple: 0 10px 30px -10px hsl(var(--maple) / 0.4);
 
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar (kept aligned for shadcn) */
+    --sidebar-background: 224 55% 9%;
+    --sidebar-foreground: 38 25% 88%;
+    --sidebar-primary: 222 85% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 35% 14%;
+    --sidebar-accent-foreground: 38 30% 92%;
+    --sidebar-border: 224 35% 18%;
+    --sidebar-ring: 222 85% 60%;
   }
 
+  /* App is dark by default; .dark class kept aligned for shadcn components. */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 224 60% 7%;
+    --foreground: 38 30% 92%;
+    --card: 224 50% 10%;
+    --card-foreground: 38 30% 94%;
+    --popover: 224 55% 9%;
+    --popover-foreground: 38 30% 94%;
+    --primary: 222 85% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 32 65% 22%;
+    --secondary-foreground: 38 80% 90%;
+    --muted: 224 35% 15%;
+    --muted-foreground: 220 15% 68%;
+    --accent: 33 78% 56%;
+    --accent-foreground: 224 70% 8%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 224 35% 18%;
+    --input: 224 35% 14%;
+    --ring: 222 85% 60%;
   }
 }
 
@@ -98,8 +93,57 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
-
-  body {
-    @apply bg-background text-foreground;
+  html {
+    color-scheme: dark;
   }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-image:
+      radial-gradient(circle at 15% 0%, hsl(222 80% 22% / 0.35), transparent 55%),
+      radial-gradient(circle at 100% 100%, hsl(33 70% 30% / 0.18), transparent 55%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Oswald', 'Inter', sans-serif;
+    letter-spacing: 0.01em;
+  }
+}
+
+@layer utilities {
+  .text-maple { color: hsl(var(--maple)); }
+  .bg-maple { background-color: hsl(var(--maple)); }
+  .border-maple { border-color: hsl(var(--maple)); }
+  .bg-gradient-sapphire { background: var(--gradient-sapphire); }
+  .bg-gradient-maple { background: var(--gradient-maple); }
+  .shadow-deep { box-shadow: var(--shadow-deep); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .shadow-maple { box-shadow: var(--shadow-maple); }
+
+  /* Moving truck animation */
+  @keyframes truck-roll {
+    0% { transform: translateX(-20%); }
+    100% { transform: translateX(120vw); }
+  }
+  @keyframes truck-roll-slow {
+    0% { transform: translateX(110vw); }
+    100% { transform: translateX(-30%); }
+  }
+  @keyframes dust-puff {
+    0%, 100% { opacity: 0.25; transform: translateY(0) scale(1); }
+    50% { opacity: 0.55; transform: translateY(-4px) scale(1.05); }
+  }
+  @keyframes wheel-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes excavator-arm {
+    0%, 100% { transform: rotate(-8deg); }
+    50% { transform: rotate(6deg); }
+  }
+  .animate-truck-roll { animation: truck-roll 22s linear infinite; }
+  .animate-truck-roll-slow { animation: truck-roll-slow 30s linear infinite; }
+  .animate-dust { animation: dust-puff 2.5s ease-in-out infinite; }
+  .animate-wheel { animation: wheel-spin 1.4s linear infinite; }
+  .animate-arm { animation: excavator-arm 4s ease-in-out infinite; }
 }
