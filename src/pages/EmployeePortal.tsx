@@ -16,7 +16,6 @@ import {
 } from "@/lib/time";
 import { Clock, Save, Calendar, FileDown, FileText } from "lucide-react";
 import jsPDF from "jspdf";
-import { useAuth as _u } from "@/contexts/AuthContext";
 
 interface Job { id: string; name: string }
 interface Entry {
