@@ -14,7 +14,8 @@ import {
   computeHours, formatDate, formatHours, formatTime12, splitOvertime,
   todayISO, weekEnd, weekStart,
 } from "@/lib/time";
-import { Clock, Save, Calendar } from "lucide-react";
+import { Clock, Save, Calendar, FileDown, FileText } from "lucide-react";
+import jsPDF from "jspdf";
 
 interface Job { id: string; name: string }
 interface Entry {
@@ -117,6 +118,122 @@ const EmployeePortal = () => {
     }
   };
 
+  const employeeName = (user?.user_metadata as { full_name?: string } | undefined)?.full_name || user?.email || "Employee";
+  const weekLabel = `${formatDate(monday)} – ${formatDate(sunday)}`;
+  const fileBase = `timesheet_${monday}_to_${sunday}`;
+
+  const buildRows = () =>
+    [...entries]
+      .sort((a, b) => a.work_date.localeCompare(b.work_date))
+      .map((e) => ({
+        date: formatDate(e.work_date),
+        clockIn: formatTime12(e.clock_in),
+        clockOut: formatTime12(e.clock_out),
+        breakMin: e.break_minutes,
+        job: jobs.find((j) => j.id === e.job_id)?.name ?? "—",
+        notes: e.notes ?? "",
+        hours: Number(e.hours),
+      }));
+
+  const exportCsv = () => {
+    if (entries.length === 0) { toast.error("Nothing to export this week."); return; }
+    const rows = buildRows();
+    const esc = (v: string | number) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ["Date", "Clock In", "Clock Out", "Break (min)", "Job", "Notes", "Hours"];
+    const lines = [
+      `Employee,${esc(employeeName)}`,
+      `Week,${esc(weekLabel)}`,
+      "",
+      header.join(","),
+      ...rows.map((r) => [r.date, r.clockIn, r.clockOut, r.breakMin, r.job, r.notes, r.hours.toFixed(2)].map(esc).join(",")),
+      "",
+      `,,,,,Regular,${totals.regular.toFixed(2)}`,
+      `,,,,,Overtime,${totals.overtime.toFixed(2)}`,
+      `,,,,,Total,${totals.total.toFixed(2)}`,
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${fileBase}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV downloaded");
+  };
+
+  const exportPdf = () => {
+    if (entries.length === 0) { toast.error("Nothing to export this week."); return; }
+    const rows = buildRows();
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 40;
+    let y = margin;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("Dwayne Noe Construction", margin, y);
+    y += 20;
+    doc.setFontSize(12);
+    doc.text("Weekly Timesheet", margin, y);
+    y += 18;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Employee: ${employeeName}`, margin, y); y += 14;
+    doc.text(`Week: ${weekLabel}`, margin, y); y += 18;
+
+    const cols = [
+      { label: "Date", w: 100 },
+      { label: "In", w: 70 },
+      { label: "Out", w: 70 },
+      { label: "Brk", w: 35 },
+      { label: "Job", w: 130 },
+      { label: "Hrs", w: 40 },
+    ];
+    doc.setFont("helvetica", "bold");
+    doc.setFillColor(230, 230, 235);
+    doc.rect(margin, y - 11, pageW - margin * 2, 16, "F");
+    let x = margin + 4;
+    cols.forEach((c) => { doc.text(c.label, x, y); x += c.w; });
+    y += 10;
+    doc.setFont("helvetica", "normal");
+
+    rows.forEach((r) => {
+      if (y > 720) { doc.addPage(); y = margin; }
+      x = margin + 4;
+      const vals = [r.date, r.clockIn, r.clockOut, String(r.breakMin), r.job, r.hours.toFixed(2)];
+      vals.forEach((v, i) => {
+        const text = doc.splitTextToSize(v, cols[i].w - 6)[0] ?? "";
+        doc.text(text, x, y + 12);
+        x += cols[i].w;
+      });
+      y += 16;
+      if (r.notes) {
+        const noteLines = doc.splitTextToSize(`Note: ${r.notes}`, pageW - margin * 2 - 8);
+        doc.setTextColor(90); doc.setFontSize(9);
+        noteLines.forEach((ln: string) => {
+          if (y > 740) { doc.addPage(); y = margin; }
+          doc.text(ln, margin + 8, y + 10); y += 12;
+        });
+        doc.setTextColor(0); doc.setFontSize(10);
+        y += 2;
+      }
+      doc.setDrawColor(220);
+      doc.line(margin, y, pageW - margin, y);
+      y += 4;
+    });
+
+    if (y > 680) { doc.addPage(); y = margin; }
+    y += 14;
+    doc.setFont("helvetica", "bold");
+    doc.text(`Regular: ${totals.regular.toFixed(2)} hrs`, margin, y); y += 14;
+    doc.text(`Overtime: ${totals.overtime.toFixed(2)} hrs`, margin, y); y += 14;
+    doc.text(`Total: ${totals.total.toFixed(2)} hrs`, margin, y);
+
+    doc.save(`${fileBase}.pdf`);
+    toast.success("PDF downloaded");
+  };
+
   return (
     <PortalLayout
       title="My Time"
@@ -195,6 +312,14 @@ const EmployeePortal = () => {
               <Stat label="Total" value={formatHours(totals.total)} />
               <Stat label="Regular" value={formatHours(totals.regular)} />
               <Stat label="Overtime" value={formatHours(totals.overtime)} accent />
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <Button type="button" variant="outline" onClick={exportCsv} disabled={entries.length === 0} className="font-display tracking-wider">
+                <FileDown className="h-4 w-4 mr-1.5" /> CSV
+              </Button>
+              <Button type="button" variant="outline" onClick={exportPdf} disabled={entries.length === 0} className="font-display tracking-wider">
+                <FileText className="h-4 w-4 mr-1.5" /> PDF
+              </Button>
             </div>
           </div>
 
