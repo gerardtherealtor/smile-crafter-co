@@ -26,7 +26,7 @@ export const PortalLayout = ({
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
         <div className="container flex items-center justify-between py-3">
-          <Link to="/" className="flex items-center gap-2.5 group">
+          <Link to="/" className="flex items-center group">
             <img
               src={logo}
               alt="Dwayne Noe Construction"
@@ -34,10 +34,6 @@ export const PortalLayout = ({
               height={1024}
               className="h-16 w-auto transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
             />
-            <div className="leading-tight hidden md:block">
-              <div className="font-stencil text-sm tracking-[0.15em]">DWAYNE NOE</div>
-              <div className="font-stencil text-[9px] tracking-[0.4em] text-maple uppercase">Construction</div>
-            </div>
           </Link>
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-xs font-medium">
