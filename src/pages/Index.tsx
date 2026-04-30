@@ -22,7 +22,7 @@ const Index = () => {
               alt="Dwayne Noe Construction logo"
               width={1024}
               height={1024}
-              className="h-12 sm:h-14 w-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
+              className="h-20 sm:h-24 w-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
             />
             <div className="leading-tight hidden sm:block">
               <div className="font-stencil text-lg sm:text-xl tracking-[0.15em] text-foreground">
