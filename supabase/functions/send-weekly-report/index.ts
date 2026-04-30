@@ -259,39 +259,29 @@ Deno.serve(async (req) => {
       .single();
     if (rErr) throw rErr;
 
-    // 7. Try to send transactional email if it's set up
-    let emailStatus = "skipped (email domain not configured)";
+    // 7. Notify all admins via the branded weekly-report email
+    let emailStatus = "skipped";
     try {
       const { data: signed } = await supabase.storage
         .from("weekly-reports")
         .createSignedUrl(path, 60 * 60 * 24 * 7); // 7-day link
 
-      const link = signed?.signedUrl ?? "";
-      const subject = `DNC Weekly Report — ${fmtDate(monday)} to ${fmtDate(sunday)}`;
-      const summary = `Regular: ${fmtHours(grandReg)} hrs · Overtime: ${fmtHours(grandOT)} hrs · Total: ${fmtHours(grandReg + grandOT)} hrs`;
-
-      for (const to of ADMIN_EMAILS) {
-        const r = await supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "weekly-timesheet-report",
-            recipientEmail: to,
-            idempotencyKey: `weekly-report-${monday}-${to}`,
-            templateData: {
-              weekRange: `${fmtDate(monday)} – ${fmtDate(sunday)}`,
-              summary,
-              regular: fmtHours(grandReg),
-              overtime: fmtHours(grandOT),
-              total: fmtHours(grandReg + grandOT),
-              downloadUrl: link,
-            },
+      const r = await supabase.functions.invoke("notify-admins", {
+        body: {
+          templateName: "admin-weekly-report",
+          idempotencyKey: `weekly-report-${monday}`,
+          templateData: {
+            weekStart: fmtDate(monday),
+            weekEnd: fmtDate(sunday),
+            totalRegular: fmtHours(grandReg),
+            totalOvertime: fmtHours(grandOT),
+            totalHours: fmtHours(grandReg + grandOT),
+            crewCount: rows.filter((row) => row.total > 0).length,
+            pdfUrl: signed?.signedUrl ?? "",
           },
-        });
-        if (r.error) {
-          emailStatus = `email error: ${r.error.message}`;
-        } else {
-          emailStatus = "sent";
-        }
-      }
+        },
+      });
+      emailStatus = r.error ? `email error: ${r.error.message}` : "sent";
     } catch (e) {
       emailStatus = `email skipped: ${(e as Error).message}`;
     }
