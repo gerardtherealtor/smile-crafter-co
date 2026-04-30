@@ -32,7 +32,7 @@ export const PortalLayout = ({
               alt="Dwayne Noe Construction"
               width={1024}
               height={1024}
-              className="h-10 w-auto transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
+              className="h-16 w-auto transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
             />
             <div className="leading-tight hidden md:block">
               <div className="font-stencil text-sm tracking-[0.15em]">DWAYNE NOE</div>
