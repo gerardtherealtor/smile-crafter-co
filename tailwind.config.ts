@@ -13,6 +13,7 @@ export default {
     extend: {
       fontFamily: {
         display: ["Oswald", "Inter", "sans-serif"],
+        stencil: ['"Stardos Stencil"', "Oswald", "sans-serif"],
         sans: ["Inter", "system-ui", "sans-serif"],
       },
       colors: {
