@@ -32,7 +32,7 @@ export const PortalLayout = ({
               alt="Dwayne Noe Construction"
               width={1024}
               height={1024}
-              className="h-16 w-auto transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
+              className="h-20 w-auto transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
             />
           </Link>
           <div className="flex items-center gap-2">
