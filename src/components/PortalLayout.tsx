@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, HardHat, Shield } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 export const PortalLayout = ({
   children,
@@ -25,13 +26,17 @@ export const PortalLayout = ({
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
         <div className="container flex items-center justify-between py-3">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-md bg-gradient-maple grid place-items-center shadow-maple font-display text-lg text-maple-foreground">
-              D
-            </div>
-            <div className="leading-tight hidden sm:block">
-              <div className="font-display text-sm tracking-wide">DWAYNE NOE</div>
-              <div className="text-[9px] tracking-[0.3em] text-maple uppercase">Construction</div>
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <img
+              src={logo}
+              alt="Dwayne Noe Construction"
+              width={1024}
+              height={1024}
+              className="h-10 w-auto transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
+            />
+            <div className="leading-tight hidden md:block">
+              <div className="font-stencil text-sm tracking-[0.15em]">DWAYNE NOE</div>
+              <div className="font-stencil text-[9px] tracking-[0.4em] text-maple uppercase">Construction</div>
             </div>
           </Link>
           <div className="flex items-center gap-2">

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { MovingFleet } from "@/components/MovingFleet";
 import { useAuth } from "@/contexts/AuthContext";
 import heroImg from "@/assets/hero-trucks.jpg";
+import logo from "@/assets/logo.png";
 import { Clock, ShieldCheck, FileText, Smartphone } from "lucide-react";
 
 const Index = () => {
@@ -15,19 +16,23 @@ const Index = () => {
       {/* Header */}
       <header className="absolute top-0 inset-x-0 z-20">
         <div className="container flex items-center justify-between py-5">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-md bg-gradient-maple grid place-items-center shadow-maple font-display text-xl text-maple-foreground">
-              D
-            </div>
-            <div className="leading-tight">
-              <div className="font-display text-lg sm:text-xl tracking-wide">
+          <Link to="/" className="flex items-center gap-3 group">
+            <img
+              src={logo}
+              alt="Dwayne Noe Construction logo"
+              width={1024}
+              height={1024}
+              className="h-12 sm:h-14 w-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
+            />
+            <div className="leading-tight hidden sm:block">
+              <div className="font-stencil text-lg sm:text-xl tracking-[0.15em] text-foreground">
                 DWAYNE NOE
               </div>
-              <div className="text-[10px] sm:text-xs tracking-[0.3em] text-maple uppercase">
+              <div className="font-stencil text-[10px] sm:text-xs tracking-[0.4em] text-maple uppercase">
                 Construction
               </div>
             </div>
-          </div>
+          </Link>
           <Button asChild size="sm" className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
             <Link to={ctaTo}>{ctaLabel}</Link>
           </Button>
