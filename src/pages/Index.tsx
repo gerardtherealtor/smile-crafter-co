@@ -22,7 +22,7 @@ const Index = () => {
               alt="Dwayne Noe Construction"
               width={1024}
               height={1024}
-              className="h-24 sm:h-28 w-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
+              className="h-32 sm:h-40 w-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
             />
           </Link>
           <Button asChild size="sm" className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
