@@ -44,30 +44,8 @@ Deno.serve(async (req) => {
     })
   }
 
-  // Look up active admin emails
-  const { data: admins, error: adminErr } = await supabase
-    .from('user_roles')
-    .select('user_id, profiles:profiles!inner(email, is_active)')
-    .eq('role', 'admin')
-
-  if (adminErr) {
-    console.error('Failed to load admins', adminErr)
-    return new Response(JSON.stringify({ error: 'Failed to load admins' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
-
-  type Row = { user_id: string; profiles: { email: string; is_active: boolean } | null }
-  const recipients = ((admins ?? []) as unknown as Row[])
-    .filter((r) => r.profiles?.is_active && r.profiles.email)
-    .map((r) => r.profiles!.email.toLowerCase())
-
-  const unique = Array.from(new Set(recipients))
-  if (unique.length === 0) {
-    return new Response(JSON.stringify({ ok: true, sent: 0, note: 'No admin recipients' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
+  // All admin notifications go to a single shared inbox.
+  const unique = ['info@dwaynenoeconstruction.com']
 
   const results: { email: string; ok: boolean; error?: string }[] = []
   for (const email of unique) {
