@@ -1,15 +1,40 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MovingFleet } from "@/components/MovingFleet";
 import { useAuth } from "@/contexts/AuthContext";
-import heroImg from "@/assets/hero-trucks.jpg";
+import heroDusk from "@/assets/hero-trucks.jpg";
+import heroTwilight from "@/assets/hero-twilight.jpg";
+import heroBlueHour from "@/assets/hero-bluehour.jpg";
+import heroNight from "@/assets/hero-night.jpg";
 import logo from "@/assets/logo.png";
 import { Clock, ShieldCheck, FileText, Smartphone } from "lucide-react";
+
+const MOODS = [
+  { id: "dusk", label: "Dusk", src: heroDusk },
+  { id: "twilight", label: "Twilight", src: heroTwilight },
+  { id: "bluehour", label: "Blue Hour", src: heroBlueHour },
+  { id: "night", label: "Midnight", src: heroNight },
+] as const;
+type MoodId = typeof MOODS[number]["id"];
 
 const Index = () => {
   const { user, role } = useAuth();
   const ctaTo = user ? (role === "admin" ? "/admin" : "/employee") : "/auth";
   const ctaLabel = user ? "Open Portal" : "Sign In to Portal";
+  const [mood, setMood] = useState<MoodId>("dusk");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("dnc-hero-mood") as MoodId | null;
+    if (saved && MOODS.some((m) => m.id === saved)) setMood(saved);
+  }, []);
+
+  const handleMood = (id: MoodId) => {
+    setMood(id);
+    localStorage.setItem("dnc-hero-mood", id);
+  };
+
+  const heroSrc = MOODS.find((m) => m.id === mood)?.src ?? heroDusk;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -34,13 +59,31 @@ const Index = () => {
       {/* Hero */}
       <section className="relative min-h-[80vh] flex items-center">
         <img
-          src={heroImg}
-          alt="Construction trucks and excavators at a job site at dusk"
-          className="absolute inset-0 w-full h-full object-cover"
+          src={heroSrc}
+          alt="Construction trucks and excavators at a job site with the Nashville skyline"
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
           width={1920}
           height={1080}
         />
         <div className="absolute inset-0" style={{ background: "var(--gradient-hero)" }} />
+
+        {/* Mood picker */}
+        <div className="absolute bottom-4 right-4 z-20 flex flex-wrap gap-1.5 p-1.5 rounded-full bg-black/50 backdrop-blur border border-white/10">
+          {MOODS.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => handleMood(m.id)}
+              aria-pressed={mood === m.id}
+              className={`px-3 py-1 rounded-full text-[10px] sm:text-xs font-stencil tracking-[0.2em] uppercase transition-all ${
+                mood === m.id
+                  ? "bg-maple text-maple-foreground shadow-maple"
+                  : "text-foreground/70 hover:text-foreground hover:bg-white/5"
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
 
         <div className="container relative z-10 pt-28 pb-20">
           <div className="max-w-2xl">
