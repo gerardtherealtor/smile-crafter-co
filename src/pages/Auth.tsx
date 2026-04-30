@@ -85,6 +85,19 @@ const AuthPage = () => {
       toast.error(error.message);
     } else {
       toast.success("Account created! Signing you in…");
+      // Notify admins (fire-and-forget; never block the user)
+      supabase.functions.invoke("notify-admins", {
+        body: {
+          templateName: "admin-new-signup",
+          idempotencyKey: `signup-${parsed.data.email}-${Date.now()}`,
+          templateData: {
+            fullName: parsed.data.fullName,
+            email: parsed.data.email,
+            phone: parsed.data.phone,
+            signupAt: new Date().toLocaleString("en-US"),
+          },
+        },
+      }).catch(() => {});
     }
   };
 

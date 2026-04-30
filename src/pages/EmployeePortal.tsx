@@ -113,6 +113,24 @@ const EmployeePortal = () => {
       toast.error(error.message);
     } else {
       toast.success("Saved");
+      // Notify admins (fire-and-forget)
+      const job = jobs.find((j) => j.id === jobId);
+      supabase.functions.invoke("notify-admins", {
+        body: {
+          templateName: "admin-hours-submitted",
+          idempotencyKey: `hours-${user.id}-${date}-${Date.now()}`,
+          templateData: {
+            employeeName: employeeName,
+            workDate: formatDate(date),
+            jobName: job?.name ?? "—",
+            clockIn: formatTime12(`${clockIn}:00`),
+            clockOut: formatTime12(`${clockOut}:00`),
+            breakMinutes: breakMin,
+            hours: liveHours.toFixed(2),
+            notes: notes.trim() || undefined,
+          },
+        },
+      }).catch(() => {});
       setNotes("");
       await loadData();
     }
