@@ -44,8 +44,12 @@ Deno.serve(async (req) => {
     })
   }
 
-  // All admin notifications go to a single shared inbox.
-  const unique = ['info@dwaynenoeconstruction.com']
+  // Admin notifications go to the shared inbox plus the owner inboxes.
+  const unique = [
+    'info@dwaynenoeconstruction.com',
+    'gwd978@gmail.com',
+    'dwaynenoeconstructionllc@gmail.com',
+  ]
 
   const results: { email: string; ok: boolean; error?: string }[] = []
   for (const email of unique) {
