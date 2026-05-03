@@ -10,6 +10,7 @@ import Auth from "./pages/Auth.tsx";
 import EmployeePortal from "./pages/EmployeePortal.tsx";
 import AdminPortal from "./pages/AdminPortal.tsx";
 import Unsubscribe from "./pages/Unsubscribe.tsx";
+import Privacy from "./pages/Privacy.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route
               path="/employee"
               element={
