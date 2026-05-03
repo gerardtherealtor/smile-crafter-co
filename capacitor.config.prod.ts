@@ -12,7 +12,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // instead of loading from the Lovable preview URL.
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.63e9c6d103b74733bb79e489d68e05c6',
+    appId: 'com.dwaynenoeconstruction.app',
   appName: 'Dwayne Noe Construction',
   webDir: 'dist',
   ios: {
