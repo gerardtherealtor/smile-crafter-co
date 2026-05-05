@@ -111,7 +111,7 @@ const EmployeePortal = () => {
       clock_out: `${s.clockOut}:00`,
       break_minutes: 0,
       hours: shiftHours(s),
-      notes: notes.trim() || null,
+      notes: s.notes.trim() || null,
     }));
     // Replace today's existing entries with the new set
     const { error: delError } = await supabase
