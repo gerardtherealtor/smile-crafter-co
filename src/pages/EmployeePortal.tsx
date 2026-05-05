@@ -356,11 +356,6 @@ const EmployeePortal = () => {
             </Button>
           )}
 
-          <div className="mt-4">
-            <Label htmlFor="notes">Notes (optional)</Label>
-            <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)}
-                      maxLength={500} placeholder="What did you work on today?" className="mt-1.5" rows={2} />
-          </div>
 
           <Button type="submit" disabled={saving}
                   className="w-full mt-5 h-12 bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider text-base">
