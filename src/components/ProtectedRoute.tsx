@@ -9,9 +9,9 @@ export const ProtectedRoute = ({
   children: ReactNode;
   requireRole?: "admin" | "employee";
 }) => {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, roleLoading } = useAuth();
 
-  if (loading) {
+  if (loading || (user && roleLoading)) {
     return (
       <div className="min-h-screen grid place-items-center bg-background">
         <div className="text-muted-foreground font-display text-lg tracking-widest">LOADING…</div>
