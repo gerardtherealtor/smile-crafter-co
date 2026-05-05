@@ -22,14 +22,14 @@ const signupSchema = loginSchema.extend({
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, roleLoading } = useAuth();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && !roleLoading && user && role) {
       navigate(role === "admin" ? "/admin" : "/employee", { replace: true });
     }
-  }, [user, role, loading, navigate]);
+  }, [user, role, loading, roleLoading, navigate]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
