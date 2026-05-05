@@ -33,8 +33,9 @@ const EmployeePortal = () => {
   const monday = useMemo(() => weekStart(), []);
   const sunday = useMemo(() => weekEnd(monday), [monday]);
 
-  // form — locked to today, supports up to 5 shifts in one day
-  const date = todayISO();
+  // form — date editable in case employee forgot to log a previous day
+  const [date, setDate] = useState<string>(todayISO());
+  const maxDate = todayISO();
   const [defaultJobId, setDefaultJobId] = useState<string>("");
   
 
@@ -296,7 +297,14 @@ const EmployeePortal = () => {
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
               <Label>Date</Label>
-              <Input type="text" value={formatDate(date)} readOnly className="mt-1.5 bg-muted/50" />
+              <Input
+                type="date"
+                value={date}
+                max={maxDate}
+                onChange={(e) => setDate(e.target.value || todayISO())}
+                className="mt-1.5"
+              />
+              <div className="text-xs text-muted-foreground mt-1">{formatDate(date)}</div>
             </div>
             <div className="rounded-lg bg-gradient-maple/10 border border-maple/30 p-3 flex flex-col justify-center">
               <div className="text-xs uppercase tracking-widest text-muted-foreground">Total Today</div>
