@@ -9,9 +9,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  formatDate, formatHours, splitOvertime, weekEnd, weekStart,
+  formatDate, formatHours, formatTime12, splitOvertime, weekEnd, weekStart,
 } from "@/lib/time";
-import { Briefcase, ClipboardList, FileDown, Mail, Plus, Trash2, Users } from "lucide-react";
+import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Trash2, Users } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean }
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
