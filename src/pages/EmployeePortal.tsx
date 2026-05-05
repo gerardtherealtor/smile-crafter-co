@@ -49,7 +49,7 @@ const EmployeePortal = () => {
     setShifts((prev) =>
       prev.length >= 5
         ? prev
-        : [...prev, { clockIn: "", clockOut: "", jobId: defaultJobId }]
+        : [...prev, { clockIn: "", clockOut: "", jobId: defaultJobId, notes: "" }]
     );
   const removeShift = (i: number) =>
     setShifts((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
