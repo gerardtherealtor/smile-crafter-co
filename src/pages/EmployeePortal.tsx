@@ -344,6 +344,14 @@ const EmployeePortal = () => {
                            onChange={(e) => updateShift(i, { clockOut: e.target.value })}
                            className="mt-1.5 text-lg" required />
                   </div>
+                  <div className="sm:col-span-3">
+                    <Label>Notes for this job (optional)</Label>
+                    <Textarea value={s.notes}
+                              onChange={(e) => updateShift(i, { notes: e.target.value })}
+                              maxLength={500}
+                              placeholder={`What did you work on at job ${i + 1}?`}
+                              className="mt-1.5" rows={2} />
+                  </div>
                 </div>
               </div>
             ))}
