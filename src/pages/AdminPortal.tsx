@@ -168,7 +168,7 @@ const AdminPortal = () => {
         </TabsContent>
 
         <TabsContent value="roster">
-          <RosterManager roster={roster} reload={load} />
+          <RosterManager roster={roster} profiles={profiles} jobs={jobs} reload={load} />
         </TabsContent>
 
         <TabsContent value="jobs">
