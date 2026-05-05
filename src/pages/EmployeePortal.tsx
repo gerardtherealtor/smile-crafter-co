@@ -148,11 +148,11 @@ const EmployeePortal = () => {
             clockOut: formatTime12(`${last.clockOut}:00`),
             breakMinutes: 0,
             hours: liveHours.toFixed(2),
-            notes: notes.trim() || undefined,
+            notes: valid.map((s, i) => s.notes.trim() ? `Job ${i + 1}: ${s.notes.trim()}` : null).filter(Boolean).join(" | ") || undefined,
           },
         },
       }).catch(() => {});
-      setNotes("");
+      setShifts([{ clockIn: "07:00", clockOut: "16:00", jobId: defaultJobId, notes: "" }]);
       await loadData();
     }
   };
