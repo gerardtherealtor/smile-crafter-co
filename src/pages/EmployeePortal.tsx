@@ -14,7 +14,7 @@ import {
   computeHours, formatDate, formatHours, formatTime12, splitOvertime,
   todayISO, weekEnd, weekStart,
 } from "@/lib/time";
-import { Clock, Save, Calendar, FileDown, FileText } from "lucide-react";
+import { Clock, Save, Calendar, FileDown, FileText, Plus, Trash2 } from "lucide-react";
 import jsPDF from "jspdf";
 
 interface Job { id: string; name: string }
@@ -33,15 +33,29 @@ const EmployeePortal = () => {
   const monday = useMemo(() => weekStart(), []);
   const sunday = useMemo(() => weekEnd(monday), [monday]);
 
-  // form
-  const [date, setDate] = useState(todayISO());
-  const [clockIn, setClockIn] = useState("07:00");
-  const [clockOut, setClockOut] = useState("16:00");
-  const [breakMin, setBreakMin] = useState(30);
-  const [jobId, setJobId] = useState<string>("");
+  // form — locked to today, supports up to 5 shifts in one day
+  const date = todayISO();
+  const [defaultJobId, setDefaultJobId] = useState<string>("");
   const [notes, setNotes] = useState("");
 
-  const liveHours = computeHours(clockIn, clockOut, breakMin);
+  type Shift = { clockIn: string; clockOut: string; jobId: string };
+  const [shifts, setShifts] = useState<Shift[]>([
+    { clockIn: "07:00", clockOut: "16:00", jobId: "" },
+  ]);
+
+  const updateShift = (i: number, patch: Partial<Shift>) =>
+    setShifts((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  const addShift = () =>
+    setShifts((prev) =>
+      prev.length >= 5
+        ? prev
+        : [...prev, { clockIn: "", clockOut: "", jobId: defaultJobId }]
+    );
+  const removeShift = (i: number) =>
+    setShifts((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
+
+  const shiftHours = (s: Shift) => computeHours(s.clockIn, s.clockOut, 0);
+  const liveHours = shifts.reduce((sum, s) => sum + shiftHours(s), 0);
 
   const loadData = async () => {
     if (!user) return;
@@ -57,26 +71,17 @@ const EmployeePortal = () => {
     ]);
     if (jobsRes.data) {
       setJobs(jobsRes.data);
-      if (!jobId && jobsRes.data.length) setJobId(jobsRes.data[0].id);
+      if (!defaultJobId && jobsRes.data.length) {
+        const firstId = jobsRes.data[0].id;
+        setDefaultJobId(firstId);
+        setShifts((prev) => prev.map((s) => (s.jobId ? s : { ...s, jobId: firstId })));
+      }
     }
     if (entriesRes.data) setEntries(entriesRes.data as Entry[]);
     setLoading(false);
   };
 
   useEffect(() => { loadData(); /* eslint-disable-next-line */ }, [user]);
-
-  // Pre-fill form if today's entry already exists
-  useEffect(() => {
-    const existing = entries.find((e) => e.work_date === date);
-    if (existing) {
-      setClockIn(existing.clock_in.slice(0, 5));
-      setClockOut(existing.clock_out.slice(0, 5));
-      setBreakMin(existing.break_minutes);
-      setJobId(existing.job_id ?? jobId);
-      setNotes(existing.notes ?? "");
-    }
-    // eslint-disable-next-line
-  }, [date, entries]);
 
   const totals = useMemo(() => {
     const total = entries.reduce((sum, e) => sum + Number(e.hours), 0);
@@ -86,35 +91,51 @@ const EmployeePortal = () => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!clockIn || !clockOut) {
-      toast.error("Enter clock in and clock out times.");
+    const valid = shifts.filter((s) => s.clockIn && s.clockOut);
+    if (valid.length === 0) {
+      toast.error("Add at least one clock in / clock out.");
       return;
     }
-    if (liveHours <= 0) {
-      toast.error("Clock out must be after clock in.");
-      return;
+    for (const s of valid) {
+      if (shiftHours(s) <= 0) {
+        toast.error("Clock out must be after clock in for every shift.");
+        return;
+      }
     }
     setSaving(true);
-    const payload = {
+    const rows = valid.map((s) => ({
       user_id: user.id,
-      job_id: jobId || null,
+      job_id: s.jobId || null,
       work_date: date,
-      clock_in: `${clockIn}:00`,
-      clock_out: `${clockOut}:00`,
-      break_minutes: breakMin,
-      hours: liveHours,
+      clock_in: `${s.clockIn}:00`,
+      clock_out: `${s.clockOut}:00`,
+      break_minutes: 0,
+      hours: shiftHours(s),
       notes: notes.trim() || null,
-    };
-    const { error } = await supabase
+    }));
+    // Replace today's existing entries with the new set
+    const { error: delError } = await supabase
       .from("time_entries")
-      .upsert(payload, { onConflict: "user_id,work_date" });
+      .delete()
+      .eq("user_id", user.id)
+      .eq("work_date", date);
+    if (delError) {
+      setSaving(false);
+      toast.error(delError.message);
+      return;
+    }
+    const { error } = await supabase.from("time_entries").insert(rows);
     setSaving(false);
     if (error) {
       toast.error(error.message);
     } else {
       toast.success("Saved");
-      // Notify admins (fire-and-forget)
-      const job = jobs.find((j) => j.id === jobId);
+      // Notify admins once with summary
+      const jobNames = valid
+        .map((s) => jobs.find((j) => j.id === s.jobId)?.name ?? "—")
+        .join(", ");
+      const first = valid[0];
+      const last = valid[valid.length - 1];
       supabase.functions.invoke("notify-admins", {
         body: {
           templateName: "admin-hours-submitted",
@@ -122,10 +143,10 @@ const EmployeePortal = () => {
           templateData: {
             employeeName: employeeName,
             workDate: formatDate(date),
-            jobName: job?.name ?? "—",
-            clockIn: formatTime12(`${clockIn}:00`),
-            clockOut: formatTime12(`${clockOut}:00`),
-            breakMinutes: breakMin,
+            jobName: jobNames,
+            clockIn: formatTime12(`${first.clockIn}:00`),
+            clockOut: formatTime12(`${last.clockOut}:00`),
+            breakMinutes: 0,
             hours: liveHours.toFixed(2),
             notes: notes.trim() || undefined,
           },
@@ -268,43 +289,72 @@ const EmployeePortal = () => {
             <h2 className="font-display text-xl uppercase tracking-wide">Today's Entry</h2>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
-              <Label htmlFor="date">Date</Label>
-              <Input id="date" type="date" value={date} max={todayISO()}
-                     onChange={(e) => setDate(e.target.value)} className="mt-1.5" required />
-            </div>
-            <div>
-              <Label>Job Site</Label>
-              <Select value={jobId} onValueChange={setJobId}>
-                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pick a job" /></SelectTrigger>
-                <SelectContent>
-                  {jobs.map((j) => (
-                    <SelectItem key={j.id} value={j.id}>{j.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="ci">Clock In</Label>
-              <Input id="ci" type="time" value={clockIn}
-                     onChange={(e) => setClockIn(e.target.value)} className="mt-1.5 text-lg" required />
-            </div>
-            <div>
-              <Label htmlFor="co">Clock Out</Label>
-              <Input id="co" type="time" value={clockOut}
-                     onChange={(e) => setClockOut(e.target.value)} className="mt-1.5 text-lg" required />
-            </div>
-            <div>
-              <Label htmlFor="brk">Break (minutes)</Label>
-              <Input id="brk" type="number" min={0} max={480} value={breakMin}
-                     onChange={(e) => setBreakMin(Number(e.target.value) || 0)} className="mt-1.5" />
+              <Label>Date</Label>
+              <Input type="text" value={formatDate(date)} readOnly className="mt-1.5 bg-muted/50" />
             </div>
             <div className="rounded-lg bg-gradient-maple/10 border border-maple/30 p-3 flex flex-col justify-center">
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">Hours Today</div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Total Today</div>
               <div className="font-display text-3xl text-maple">{formatHours(liveHours)}</div>
             </div>
           </div>
+
+          <div className="space-y-4">
+            {shifts.map((s, i) => (
+              <div key={i} className="rounded-lg border border-border bg-background/40 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-display text-sm uppercase tracking-widest text-muted-foreground">
+                    Shift {i + 1}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm text-maple font-display">
+                      {formatHours(shiftHours(s))} hrs
+                    </div>
+                    {shifts.length > 1 && (
+                      <Button type="button" variant="ghost" size="sm"
+                              onClick={() => removeShift(i)}
+                              className="h-8 px-2 text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-3">
+                    <Label>Job Site</Label>
+                    <Select value={s.jobId} onValueChange={(v) => updateShift(i, { jobId: v })}>
+                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pick a job" /></SelectTrigger>
+                      <SelectContent>
+                        {jobs.map((j) => (
+                          <SelectItem key={j.id} value={j.id}>{j.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Clock In</Label>
+                    <Input type="time" value={s.clockIn}
+                           onChange={(e) => updateShift(i, { clockIn: e.target.value })}
+                           className="mt-1.5 text-lg" required />
+                  </div>
+                  <div>
+                    <Label>Clock Out</Label>
+                    <Input type="time" value={s.clockOut}
+                           onChange={(e) => updateShift(i, { clockOut: e.target.value })}
+                           className="mt-1.5 text-lg" required />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {shifts.length < 5 && (
+            <Button type="button" variant="outline" onClick={addShift}
+                    className="w-full mt-4 font-display tracking-wider">
+              <Plus className="h-4 w-4 mr-2" /> Add Another Job ({shifts.length}/5)
+            </Button>
+          )}
 
           <div className="mt-4">
             <Label htmlFor="notes">Notes (optional)</Label>
