@@ -91,35 +91,51 @@ const EmployeePortal = () => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!clockIn || !clockOut) {
-      toast.error("Enter clock in and clock out times.");
+    const valid = shifts.filter((s) => s.clockIn && s.clockOut);
+    if (valid.length === 0) {
+      toast.error("Add at least one clock in / clock out.");
       return;
     }
-    if (liveHours <= 0) {
-      toast.error("Clock out must be after clock in.");
-      return;
+    for (const s of valid) {
+      if (shiftHours(s) <= 0) {
+        toast.error("Clock out must be after clock in for every shift.");
+        return;
+      }
     }
     setSaving(true);
-    const payload = {
+    const rows = valid.map((s) => ({
       user_id: user.id,
-      job_id: jobId || null,
+      job_id: s.jobId || null,
       work_date: date,
-      clock_in: `${clockIn}:00`,
-      clock_out: `${clockOut}:00`,
-      break_minutes: breakMin,
-      hours: liveHours,
+      clock_in: `${s.clockIn}:00`,
+      clock_out: `${s.clockOut}:00`,
+      break_minutes: 0,
+      hours: shiftHours(s),
       notes: notes.trim() || null,
-    };
-    const { error } = await supabase
+    }));
+    // Replace today's existing entries with the new set
+    const { error: delError } = await supabase
       .from("time_entries")
-      .upsert(payload, { onConflict: "user_id,work_date" });
+      .delete()
+      .eq("user_id", user.id)
+      .eq("work_date", date);
+    if (delError) {
+      setSaving(false);
+      toast.error(delError.message);
+      return;
+    }
+    const { error } = await supabase.from("time_entries").insert(rows);
     setSaving(false);
     if (error) {
       toast.error(error.message);
     } else {
       toast.success("Saved");
-      // Notify admins (fire-and-forget)
-      const job = jobs.find((j) => j.id === jobId);
+      // Notify admins once with summary
+      const jobNames = valid
+        .map((s) => jobs.find((j) => j.id === s.jobId)?.name ?? "—")
+        .join(", ");
+      const first = valid[0];
+      const last = valid[valid.length - 1];
       supabase.functions.invoke("notify-admins", {
         body: {
           templateName: "admin-hours-submitted",
@@ -127,10 +143,10 @@ const EmployeePortal = () => {
           templateData: {
             employeeName: employeeName,
             workDate: formatDate(date),
-            jobName: job?.name ?? "—",
-            clockIn: formatTime12(`${clockIn}:00`),
-            clockOut: formatTime12(`${clockOut}:00`),
-            breakMinutes: breakMin,
+            jobName: jobNames,
+            clockIn: formatTime12(`${first.clockIn}:00`),
+            clockOut: formatTime12(`${last.clockOut}:00`),
+            breakMinutes: 0,
             hours: liveHours.toFixed(2),
             notes: notes.trim() || undefined,
           },
