@@ -33,15 +33,29 @@ const EmployeePortal = () => {
   const monday = useMemo(() => weekStart(), []);
   const sunday = useMemo(() => weekEnd(monday), [monday]);
 
-  // form
-  const [date, setDate] = useState(todayISO());
-  const [clockIn, setClockIn] = useState("07:00");
-  const [clockOut, setClockOut] = useState("16:00");
-  const [breakMin, setBreakMin] = useState(30);
-  const [jobId, setJobId] = useState<string>("");
+  // form — locked to today, supports up to 5 shifts in one day
+  const date = todayISO();
+  const [defaultJobId, setDefaultJobId] = useState<string>("");
   const [notes, setNotes] = useState("");
 
-  const liveHours = computeHours(clockIn, clockOut, breakMin);
+  type Shift = { clockIn: string; clockOut: string; jobId: string };
+  const [shifts, setShifts] = useState<Shift[]>([
+    { clockIn: "07:00", clockOut: "16:00", jobId: "" },
+  ]);
+
+  const updateShift = (i: number, patch: Partial<Shift>) =>
+    setShifts((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  const addShift = () =>
+    setShifts((prev) =>
+      prev.length >= 5
+        ? prev
+        : [...prev, { clockIn: "", clockOut: "", jobId: defaultJobId }]
+    );
+  const removeShift = (i: number) =>
+    setShifts((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
+
+  const shiftHours = (s: Shift) => computeHours(s.clockIn, s.clockOut, 0);
+  const liveHours = shifts.reduce((sum, s) => sum + shiftHours(s), 0);
 
   const loadData = async () => {
     if (!user) return;
