@@ -71,26 +71,17 @@ const EmployeePortal = () => {
     ]);
     if (jobsRes.data) {
       setJobs(jobsRes.data);
-      if (!jobId && jobsRes.data.length) setJobId(jobsRes.data[0].id);
+      if (!defaultJobId && jobsRes.data.length) {
+        const firstId = jobsRes.data[0].id;
+        setDefaultJobId(firstId);
+        setShifts((prev) => prev.map((s) => (s.jobId ? s : { ...s, jobId: firstId })));
+      }
     }
     if (entriesRes.data) setEntries(entriesRes.data as Entry[]);
     setLoading(false);
   };
 
   useEffect(() => { loadData(); /* eslint-disable-next-line */ }, [user]);
-
-  // Pre-fill form if today's entry already exists
-  useEffect(() => {
-    const existing = entries.find((e) => e.work_date === date);
-    if (existing) {
-      setClockIn(existing.clock_in.slice(0, 5));
-      setClockOut(existing.clock_out.slice(0, 5));
-      setBreakMin(existing.break_minutes);
-      setJobId(existing.job_id ?? jobId);
-      setNotes(existing.notes ?? "");
-    }
-    // eslint-disable-next-line
-  }, [date, entries]);
 
   const totals = useMemo(() => {
     const total = entries.reduce((sum, e) => sum + Number(e.hours), 0);
