@@ -36,7 +36,7 @@ const EmployeePortal = () => {
   // form — locked to today, supports up to 5 shifts in one day
   const date = todayISO();
   const [defaultJobId, setDefaultJobId] = useState<string>("");
-  const [notes, setNotes] = useState("");
+  
 
   type Shift = { clockIn: string; clockOut: string; jobId: string; notes: string };
   const [shifts, setShifts] = useState<Shift[]>([
