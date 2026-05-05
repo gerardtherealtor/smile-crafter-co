@@ -283,9 +283,133 @@ const JobsManager = ({ jobs, reload }: { jobs: Job[]; reload: () => void }) => {
   );
 };
 
-const RosterManager = ({ roster, reload }: { roster: RosterRow[]; reload: () => void }) => {
+interface DetailEntry {
+  id: string;
+  work_date: string;
+  clock_in: string;
+  clock_out: string;
+  hours: number;
+  notes: string | null;
+  job_id: string | null;
+}
+
+const EmployeeWeekDialog = ({
+  profile, jobs, onClose,
+}: { profile: Profile; jobs: Job[]; onClose: () => void }) => {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [entries, setEntries] = useState<DetailEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const monday = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + weekOffset * 7);
+    return weekStart(d);
+  }, [weekOffset]);
+  const sunday = useMemo(() => weekEnd(monday), [monday]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("time_entries")
+        .select("id,work_date,clock_in,clock_out,hours,notes,job_id")
+        .eq("user_id", profile.id)
+        .gte("work_date", monday)
+        .lte("work_date", sunday)
+        .order("work_date")
+        .order("clock_in");
+      if (!cancelled) {
+        setEntries((data ?? []) as DetailEntry[]);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [profile.id, monday, sunday]);
+
+  const jobName = (id: string | null) => jobs.find((j) => j.id === id)?.name ?? "—";
+  const total = entries.reduce((s, e) => s + Number(e.hours), 0);
+  const { regular, overtime } = splitOvertime(total);
+
+  // Group by date
+  const byDate = useMemo(() => {
+    const m = new Map<string, DetailEntry[]>();
+    for (const e of entries) {
+      const arr = m.get(e.work_date) ?? [];
+      arr.push(e);
+      m.set(e.work_date, arr);
+    }
+    return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [entries]);
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display tracking-wide">{profile.full_name || profile.email}</DialogTitle>
+          <p className="text-sm text-muted-foreground">{profile.email}</p>
+        </DialogHeader>
+
+        <div className="flex items-center justify-between mt-2">
+          <Button size="sm" variant="outline" onClick={() => setWeekOffset((w) => w - 1)}>
+            <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+          </Button>
+          <div className="text-sm font-medium">
+            {formatDate(monday)} – {formatDate(sunday)}
+            {weekOffset === 0 && <span className="ml-2 text-xs text-muted-foreground">(this week)</span>}
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setWeekOffset((w) => w + 1)} disabled={weekOffset >= 0}>
+            Next <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 mt-3">
+          <BigStat label="Total" value={formatHours(total)} />
+          <BigStat label="Regular" value={formatHours(regular)} />
+          <BigStat label="OT" value={formatHours(overtime)} accent />
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {loading ? (
+            <p className="text-center text-muted-foreground py-8">Loading…</p>
+          ) : byDate.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No hours logged this week.</p>
+          ) : byDate.map(([date, dayEntries]) => {
+            const dayTotal = dayEntries.reduce((s, e) => s + Number(e.hours), 0);
+            return (
+              <div key={date} className="rounded-lg border border-border bg-card/50 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-display tracking-wide">{formatDate(date)}</div>
+                  <div className="text-sm font-display">{formatHours(dayTotal)} hrs</div>
+                </div>
+                <div className="space-y-2">
+                  {dayEntries.map((e) => (
+                    <div key={e.id} className="text-sm border-l-2 border-maple/40 pl-3">
+                      <div className="flex justify-between flex-wrap gap-2">
+                        <span className="font-medium">{jobName(e.job_id)}</span>
+                        <span className="text-muted-foreground">
+                          {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {formatHours(Number(e.hours))} hrs
+                        </span>
+                      </div>
+                      {e.notes && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const RosterManager = ({
+  roster, profiles, jobs, reload,
+}: { roster: RosterRow[]; profiles: Profile[]; jobs: Job[]; reload: () => void }) => {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<Profile | null>(null);
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -308,11 +432,29 @@ const RosterManager = ({ roster, reload }: { roster: RosterRow[]; reload: () => 
     if (error) toast.error(error.message); else { toast.success("Removed"); reload(); }
   };
 
+  // Match roster entry to a signed-up profile (by linked_profile_id or name)
+  const findProfile = (r: RosterRow): Profile | null => {
+    if (r.linked_profile_id) {
+      return profiles.find((p) => p.id === r.linked_profile_id) ?? null;
+    }
+    const norm = r.full_name.trim().toLowerCase();
+    return profiles.find((p) => (p.full_name ?? "").trim().toLowerCase() === norm) ?? null;
+  };
+
+  const openDetail = (r: RosterRow) => {
+    const p = findProfile(r);
+    if (!p) {
+      toast.error(`${r.full_name} hasn't signed up yet — no hours to show.`);
+      return;
+    }
+    setSelected(p);
+  };
+
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-card p-4 shadow-deep">
         <p className="text-sm text-muted-foreground mb-3">
-          Preloaded crew names. Each employee still needs to sign up at <span className="text-foreground font-mono">/auth</span> using their own email + password to clock in.
+          Click a name to view their weekly hours and job history. Each employee still needs to sign up at <span className="text-foreground font-mono">/auth</span> using their own email + password to clock in.
         </p>
         <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-3">
           <Input placeholder="Last, First" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
@@ -334,24 +476,41 @@ const RosterManager = ({ roster, reload }: { roster: RosterRow[]; reload: () => 
           <TableBody>
             {roster.length === 0 ? (
               <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No roster entries.</TableCell></TableRow>
-            ) : roster.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.full_name}</TableCell>
-                <TableCell className="text-right">
-                  <Button size="sm" variant={r.is_active ? "outline" : "secondary"} onClick={() => toggle(r)}>
-                    {r.is_active ? "Active" : "Inactive"}
-                  </Button>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button size="sm" variant="ghost" onClick={() => remove(r)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            ) : roster.map((r) => {
+              const linked = findProfile(r);
+              return (
+                <TableRow key={r.id}>
+                  <TableCell>
+                    <button
+                      onClick={() => openDetail(r)}
+                      className="font-medium text-left hover:text-maple transition-colors disabled:opacity-50 disabled:hover:text-foreground"
+                      disabled={!linked}
+                      title={linked ? "View weekly hours" : "Not signed up yet"}
+                    >
+                      {r.full_name}
+                    </button>
+                    {!linked && <div className="text-xs text-muted-foreground">Not signed up yet</div>}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant={r.is_active ? "outline" : "secondary"} onClick={() => toggle(r)}>
+                      {r.is_active ? "Active" : "Inactive"}
+                    </Button>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="ghost" onClick={() => remove(r)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
+
+      {selected && (
+        <EmployeeWeekDialog profile={selected} jobs={jobs} onClose={() => setSelected(null)} />
+      )}
     </div>
   );
 };
