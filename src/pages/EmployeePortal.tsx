@@ -70,9 +70,13 @@ const EmployeePortal = () => {
         .order("work_date", { ascending: false }),
     ]);
     if (jobsRes.data) {
-      setJobs(jobsRes.data);
-      if (!defaultJobId && jobsRes.data.length) {
-        const firstId = jobsRes.data[0].id;
+      // Natural sort so Hamilton Lot # 2 comes before # 10
+      const sorted = [...jobsRes.data].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
+      );
+      setJobs(sorted);
+      if (!defaultJobId && sorted.length) {
+        const firstId = sorted[0].id;
         setDefaultJobId(firstId);
         setShifts((prev) => prev.map((s) => (s.jobId ? s : { ...s, jobId: firstId })));
       }
