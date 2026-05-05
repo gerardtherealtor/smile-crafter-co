@@ -33,8 +33,9 @@ const EmployeePortal = () => {
   const monday = useMemo(() => weekStart(), []);
   const sunday = useMemo(() => weekEnd(monday), [monday]);
 
-  // form — locked to today, supports up to 5 shifts in one day
-  const date = todayISO();
+  // form — date editable in case employee forgot to log a previous day
+  const [date, setDate] = useState<string>(todayISO());
+  const maxDate = todayISO();
   const [defaultJobId, setDefaultJobId] = useState<string>("");
   
 
