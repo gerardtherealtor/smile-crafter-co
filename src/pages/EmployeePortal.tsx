@@ -36,11 +36,11 @@ const EmployeePortal = () => {
   // form — locked to today, supports up to 5 shifts in one day
   const date = todayISO();
   const [defaultJobId, setDefaultJobId] = useState<string>("");
-  const [notes, setNotes] = useState("");
+  
 
-  type Shift = { clockIn: string; clockOut: string; jobId: string };
+  type Shift = { clockIn: string; clockOut: string; jobId: string; notes: string };
   const [shifts, setShifts] = useState<Shift[]>([
-    { clockIn: "07:00", clockOut: "16:00", jobId: "" },
+    { clockIn: "07:00", clockOut: "16:00", jobId: "", notes: "" },
   ]);
 
   const updateShift = (i: number, patch: Partial<Shift>) =>
@@ -49,7 +49,7 @@ const EmployeePortal = () => {
     setShifts((prev) =>
       prev.length >= 5
         ? prev
-        : [...prev, { clockIn: "", clockOut: "", jobId: defaultJobId }]
+        : [...prev, { clockIn: "", clockOut: "", jobId: defaultJobId, notes: "" }]
     );
   const removeShift = (i: number) =>
     setShifts((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
@@ -111,7 +111,7 @@ const EmployeePortal = () => {
       clock_out: `${s.clockOut}:00`,
       break_minutes: 0,
       hours: shiftHours(s),
-      notes: notes.trim() || null,
+      notes: s.notes.trim() || null,
     }));
     // Replace today's existing entries with the new set
     const { error: delError } = await supabase
@@ -148,11 +148,11 @@ const EmployeePortal = () => {
             clockOut: formatTime12(`${last.clockOut}:00`),
             breakMinutes: 0,
             hours: liveHours.toFixed(2),
-            notes: notes.trim() || undefined,
+            notes: valid.map((s, i) => s.notes.trim() ? `Job ${i + 1}: ${s.notes.trim()}` : null).filter(Boolean).join(" | ") || undefined,
           },
         },
       }).catch(() => {});
-      setNotes("");
+      setShifts([{ clockIn: "07:00", clockOut: "16:00", jobId: defaultJobId, notes: "" }]);
       await loadData();
     }
   };
@@ -344,6 +344,14 @@ const EmployeePortal = () => {
                            onChange={(e) => updateShift(i, { clockOut: e.target.value })}
                            className="mt-1.5 text-lg" required />
                   </div>
+                  <div className="sm:col-span-3">
+                    <Label>Notes for this job (optional)</Label>
+                    <Textarea value={s.notes}
+                              onChange={(e) => updateShift(i, { notes: e.target.value })}
+                              maxLength={500}
+                              placeholder={`What did you work on at job ${i + 1}?`}
+                              className="mt-1.5" rows={2} />
+                  </div>
                 </div>
               </div>
             ))}
@@ -356,11 +364,6 @@ const EmployeePortal = () => {
             </Button>
           )}
 
-          <div className="mt-4">
-            <Label htmlFor="notes">Notes (optional)</Label>
-            <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)}
-                      maxLength={500} placeholder="What did you work on today?" className="mt-1.5" rows={2} />
-          </div>
 
           <Button type="submit" disabled={saving}
                   className="w-full mt-5 h-12 bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider text-base">
