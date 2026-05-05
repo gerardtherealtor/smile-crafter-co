@@ -289,43 +289,72 @@ const EmployeePortal = () => {
             <h2 className="font-display text-xl uppercase tracking-wide">Today's Entry</h2>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
-              <Label htmlFor="date">Date</Label>
-              <Input id="date" type="date" value={date} max={todayISO()}
-                     onChange={(e) => setDate(e.target.value)} className="mt-1.5" required />
-            </div>
-            <div>
-              <Label>Job Site</Label>
-              <Select value={jobId} onValueChange={setJobId}>
-                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pick a job" /></SelectTrigger>
-                <SelectContent>
-                  {jobs.map((j) => (
-                    <SelectItem key={j.id} value={j.id}>{j.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="ci">Clock In</Label>
-              <Input id="ci" type="time" value={clockIn}
-                     onChange={(e) => setClockIn(e.target.value)} className="mt-1.5 text-lg" required />
-            </div>
-            <div>
-              <Label htmlFor="co">Clock Out</Label>
-              <Input id="co" type="time" value={clockOut}
-                     onChange={(e) => setClockOut(e.target.value)} className="mt-1.5 text-lg" required />
-            </div>
-            <div>
-              <Label htmlFor="brk">Break (minutes)</Label>
-              <Input id="brk" type="number" min={0} max={480} value={breakMin}
-                     onChange={(e) => setBreakMin(Number(e.target.value) || 0)} className="mt-1.5" />
+              <Label>Date</Label>
+              <Input type="text" value={formatDate(date)} readOnly className="mt-1.5 bg-muted/50" />
             </div>
             <div className="rounded-lg bg-gradient-maple/10 border border-maple/30 p-3 flex flex-col justify-center">
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">Hours Today</div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Total Today</div>
               <div className="font-display text-3xl text-maple">{formatHours(liveHours)}</div>
             </div>
           </div>
+
+          <div className="space-y-4">
+            {shifts.map((s, i) => (
+              <div key={i} className="rounded-lg border border-border bg-background/40 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-display text-sm uppercase tracking-widest text-muted-foreground">
+                    Shift {i + 1}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm text-maple font-display">
+                      {formatHours(shiftHours(s))} hrs
+                    </div>
+                    {shifts.length > 1 && (
+                      <Button type="button" variant="ghost" size="sm"
+                              onClick={() => removeShift(i)}
+                              className="h-8 px-2 text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-3">
+                    <Label>Job Site</Label>
+                    <Select value={s.jobId} onValueChange={(v) => updateShift(i, { jobId: v })}>
+                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pick a job" /></SelectTrigger>
+                      <SelectContent>
+                        {jobs.map((j) => (
+                          <SelectItem key={j.id} value={j.id}>{j.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Clock In</Label>
+                    <Input type="time" value={s.clockIn}
+                           onChange={(e) => updateShift(i, { clockIn: e.target.value })}
+                           className="mt-1.5 text-lg" required />
+                  </div>
+                  <div>
+                    <Label>Clock Out</Label>
+                    <Input type="time" value={s.clockOut}
+                           onChange={(e) => updateShift(i, { clockOut: e.target.value })}
+                           className="mt-1.5 text-lg" required />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {shifts.length < 5 && (
+            <Button type="button" variant="outline" onClick={addShift}
+                    className="w-full mt-4 font-display tracking-wider">
+              <Plus className="h-4 w-4 mr-2" /> Add Another Job ({shifts.length}/5)
+            </Button>
+          )}
 
           <div className="mt-4">
             <Label htmlFor="notes">Notes (optional)</Label>
