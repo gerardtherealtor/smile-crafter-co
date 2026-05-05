@@ -45,7 +45,12 @@ const AdminPortal = () => {
       supabase.from("roster").select("id,full_name,is_active,linked_profile_id").order("full_name"),
     ]);
     if (p.data) setProfiles(p.data as Profile[]);
-    if (j.data) setJobs(j.data as Job[]);
+    if (j.data) {
+      const sortedJobs = [...j.data].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
+      );
+      setJobs(sortedJobs as Job[]);
+    }
     if (e.data) setEntries(e.data as EntryRow[]);
     if (r.data) setReports(r.data as ReportRow[]);
     if (ro.data) setRoster(ro.data as RosterRow[]);
