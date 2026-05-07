@@ -23,6 +23,43 @@ const Section = ({ title, subtitle, children }: { title: string; subtitle?: stri
   </section>
 );
 
+const YesNo = ({
+  label,
+  name,
+  value,
+  onChange,
+  detailsName,
+  detailsValue,
+  detailsLabel = "Please explain",
+}: {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (n: string, v: string) => void;
+  detailsName?: string;
+  detailsValue?: string;
+  detailsLabel?: string;
+}) => (
+  <div className="space-y-2">
+    <Label className="block">{label}</Label>
+    <RadioGroup value={value} onValueChange={(v) => onChange(name, v)} className="flex gap-4">
+      <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="no" /> No</label>
+      <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="yes" /> Yes</label>
+    </RadioGroup>
+    {value === "yes" && detailsName && (
+      <div className="pt-1">
+        <Label className="mb-1.5 block text-xs text-muted-foreground">{detailsLabel}</Label>
+        <Textarea
+          value={detailsValue ?? ""}
+          onChange={(e) => onChange(detailsName, e.target.value)}
+          rows={3}
+          maxLength={1000}
+        />
+      </div>
+    )}
+  </div>
+);
+
 const Field = ({
   label,
   name,
@@ -77,6 +114,10 @@ const Application = () => {
     ref1Name: "", ref1Phone: "", ref1Relation: "",
     ref2Name: "", ref2Phone: "", ref2Relation: "",
     convicted: "no", convictedDetails: "",
+    previouslyApplied: "no", previouslyAppliedDetails: "",
+    everFired: "no", everFiredDetails: "",
+    physicalLimitations: "no", physicalLimitationsDetails: "",
+    currentlyEmployed: "no", contactCurrentEmployer: "no", currentlyEmployedDetails: "",
     emergencyName: "", emergencyPhone: "", emergencyRelation: "",
     signature: "", signedDate: new Date().toISOString().slice(0, 10),
     consent: false,
@@ -181,6 +222,17 @@ const Application = () => {
                 I am legally eligible to work in the U.S.
               </label>
             </div>
+            <div className="pt-2 border-t border-border/60">
+              <YesNo
+                label="Have you previously applied to or worked for Dwayne Noe Construction?"
+                name="previouslyApplied"
+                value={f.previouslyApplied as string}
+                onChange={setStr}
+                detailsName="previouslyAppliedDetails"
+                detailsValue={f.previouslyAppliedDetails as string}
+                detailsLabel="When and in what capacity?"
+              />
+            </div>
           </Section>
 
           {/* Position */}
@@ -216,6 +268,16 @@ const Application = () => {
                 Able to lift 50+ lbs repeatedly
               </label>
             </div>
+            <div className="pt-2 border-t border-border/60">
+              <YesNo
+                label="Do you have any physical limitations that would prevent you from performing the job?"
+                name="physicalLimitations"
+                value={f.physicalLimitations as string}
+                onChange={setStr}
+                detailsName="physicalLimitationsDetails"
+                detailsValue={f.physicalLimitationsDetails as string}
+              />
+            </div>
           </Section>
 
           {/* Education */}
@@ -247,6 +309,25 @@ const Application = () => {
                 <Field label="Reason for Leaving" name={`job${n}Reason`} value={f[`job${n}Reason`] as string} onChange={setStr} />
               </div>
             ))}
+            <div className="rounded-lg border border-border/60 p-4 space-y-4">
+              <YesNo
+                label="Are you currently employed?"
+                name="currentlyEmployed"
+                value={f.currentlyEmployed as string}
+                onChange={setStr}
+                detailsName="currentlyEmployedDetails"
+                detailsValue={f.currentlyEmployedDetails as string}
+                detailsLabel="Where, and may we contact them?"
+              />
+              <YesNo
+                label="Have you ever been fired or asked to resign from a position?"
+                name="everFired"
+                value={f.everFired as string}
+                onChange={setStr}
+                detailsName="everFiredDetails"
+                detailsValue={f.everFiredDetails as string}
+              />
+            </div>
           </Section>
 
           {/* Skills */}
@@ -274,19 +355,14 @@ const Application = () => {
 
           {/* Background */}
           <Section title="Background" subtitle="A conviction will not necessarily disqualify you from employment.">
-            <div>
-              <Label className="mb-1.5 block">Have you ever been convicted of a felony?</Label>
-              <RadioGroup value={f.convicted as string} onValueChange={(v) => set("convicted", v)} className="flex gap-4">
-                <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="no" /> No</label>
-                <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="yes" /> Yes</label>
-              </RadioGroup>
-            </div>
-            {f.convicted === "yes" && (
-              <div>
-                <Label className="mb-1.5 block">Please explain</Label>
-                <Textarea value={f.convictedDetails as string} onChange={(e) => set("convictedDetails", e.target.value)} rows={3} />
-              </div>
-            )}
+            <YesNo
+              label="Have you ever been convicted of a felony?"
+              name="convicted"
+              value={f.convicted as string}
+              onChange={setStr}
+              detailsName="convictedDetails"
+              detailsValue={f.convictedDetails as string}
+            />
           </Section>
 
           {/* Emergency */}
