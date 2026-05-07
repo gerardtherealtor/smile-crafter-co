@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -97,8 +97,12 @@ const Field = ({
 
 const Application = () => {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [positions, setPositions] = useState<string[]>([]);
+  const [otherMachinery, setOtherMachinery] = useState("");
+  const [applicationSource, setApplicationSource] = useState("Direct");
   const [f, setF] = useState<FormState>({
     fullName: "", email: "", phone: "", address: "", city: "", state: "", zip: "",
     dob: "", ssn: "", driversLicense: "", licenseState: "",
@@ -126,6 +130,15 @@ const Application = () => {
   const set = (n: string, v: string | boolean) => setF((p) => ({ ...p, [n]: v }));
   const setStr = (n: string, v: string) => set(n, v);
 
+  useEffect(() => {
+    const utm = searchParams.get("utm_source");
+    setApplicationSource(utm && utm.trim() ? utm : "Direct");
+  }, [searchParams]);
+
+  const togglePosition = (label: string) => {
+    setPositions((prev) => (prev.includes(label) ? prev.filter((p) => p !== label) : [...prev, label]));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!f.consent) {
@@ -134,8 +147,15 @@ const Application = () => {
     }
     setSubmitting(true);
     try {
-      // Try storing the application; gracefully fall back if the table doesn't exist
-      const { error } = await supabase.from("employment_applications" as never).insert(f as never);
+      const positionsList = positions.map((p) => (p === "Other Machinery" && otherMachinery ? `Other Machinery: ${otherMachinery}` : p));
+      const payload = {
+        ...f,
+        position: positionsList.join(", "),
+        positions: positionsList,
+        otherMachinery,
+        applicationSource,
+      };
+      const { error } = await supabase.from("employment_applications" as never).insert(payload as never);
       if (error && !error.message.toLowerCase().includes("does not exist") && !error.message.toLowerCase().includes("not found")) {
         throw error;
       }
@@ -237,9 +257,49 @@ const Application = () => {
 
           {/* Position */}
           <Section title="Position Desired">
+            <div>
+              <Label className="mb-2 block">Position(s) Applying For <span className="text-maple">*</span></Label>
+              <div className="grid sm:grid-cols-2 gap-2">
+                {[
+                  "General Heavy Equipment Operator",
+                  "Trackhoe/Excavator Operator",
+                  "Dozer Operator",
+                  "Roller Operator",
+                  "Loader Operator",
+                  "Backhoe Operator",
+                  "Crane Operator",
+                  "Dump Truck Driver",
+                  "Other Machinery",
+                ].map((opt) => {
+                  const checked = positions.includes(opt);
+                  return (
+                    <label
+                      key={opt}
+                      className={`flex items-center gap-2 text-sm rounded-md border px-3 py-2 cursor-pointer transition-colors ${
+                        checked
+                          ? "border-maple bg-maple/10 text-foreground"
+                          : "border-border hover:border-maple/60 hover:bg-maple/5"
+                      }`}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => togglePosition(opt)}
+                        className="data-[state=checked]:bg-maple data-[state=checked]:border-maple data-[state=checked]:text-maple-foreground"
+                      />
+                      {opt}
+                    </label>
+                  );
+                })}
+              </div>
+              {positions.includes("Other Machinery") && (
+                <div className="pt-3">
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">Please specify</Label>
+                  <Input value={otherMachinery} onChange={(e) => setOtherMachinery(e.target.value)} placeholder="Specify other machinery" />
+                </div>
+              )}
+            </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Position Applying For" name="position" value={f.position as string} onChange={setStr} required placeholder="Laborer, Operator, Foreman..." />
-              <Field label="Desired Pay" name="desiredPay" value={f.desiredPay as string} onChange={setStr} placeholder="$/hr" />
+              <Field label="Desired Pay" name="desiredPay" value={f.desiredPay as string} onChange={setStr} placeholder="$21+ per hour" />
               <Field label="Date Available to Start" name="availableStart" type="date" value={f.availableStart as string} onChange={setStr} required />
               <div>
                 <Label className="mb-1.5 block">Employment Type</Label>
