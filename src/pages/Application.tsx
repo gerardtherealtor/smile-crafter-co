@@ -23,6 +23,43 @@ const Section = ({ title, subtitle, children }: { title: string; subtitle?: stri
   </section>
 );
 
+const YesNo = ({
+  label,
+  name,
+  value,
+  onChange,
+  detailsName,
+  detailsValue,
+  detailsLabel = "Please explain",
+}: {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (n: string, v: string) => void;
+  detailsName?: string;
+  detailsValue?: string;
+  detailsLabel?: string;
+}) => (
+  <div className="space-y-2">
+    <Label className="block">{label}</Label>
+    <RadioGroup value={value} onValueChange={(v) => onChange(name, v)} className="flex gap-4">
+      <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="no" /> No</label>
+      <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="yes" /> Yes</label>
+    </RadioGroup>
+    {value === "yes" && detailsName && (
+      <div className="pt-1">
+        <Label className="mb-1.5 block text-xs text-muted-foreground">{detailsLabel}</Label>
+        <Textarea
+          value={detailsValue ?? ""}
+          onChange={(e) => onChange(detailsName, e.target.value)}
+          rows={3}
+          maxLength={1000}
+        />
+      </div>
+    )}
+  </div>
+);
+
 const Field = ({
   label,
   name,
