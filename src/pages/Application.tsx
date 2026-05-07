@@ -222,6 +222,17 @@ const Application = () => {
                 I am legally eligible to work in the U.S.
               </label>
             </div>
+            <div className="pt-2 border-t border-border/60">
+              <YesNo
+                label="Have you previously applied to or worked for Dwayne Noe Construction?"
+                name="previouslyApplied"
+                value={f.previouslyApplied as string}
+                onChange={setStr}
+                detailsName="previouslyAppliedDetails"
+                detailsValue={f.previouslyAppliedDetails as string}
+                detailsLabel="When and in what capacity?"
+              />
+            </div>
           </Section>
 
           {/* Position */}
