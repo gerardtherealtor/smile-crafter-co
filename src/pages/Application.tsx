@@ -309,6 +309,25 @@ const Application = () => {
                 <Field label="Reason for Leaving" name={`job${n}Reason`} value={f[`job${n}Reason`] as string} onChange={setStr} />
               </div>
             ))}
+            <div className="rounded-lg border border-border/60 p-4 space-y-4">
+              <YesNo
+                label="Are you currently employed?"
+                name="currentlyEmployed"
+                value={f.currentlyEmployed as string}
+                onChange={setStr}
+                detailsName="currentlyEmployedDetails"
+                detailsValue={f.currentlyEmployedDetails as string}
+                detailsLabel="Where, and may we contact them?"
+              />
+              <YesNo
+                label="Have you ever been fired or asked to resign from a position?"
+                name="everFired"
+                value={f.everFired as string}
+                onChange={setStr}
+                detailsName="everFiredDetails"
+                detailsValue={f.everFiredDetails as string}
+              />
+            </div>
           </Section>
 
           {/* Skills */}
