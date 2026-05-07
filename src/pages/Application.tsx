@@ -257,9 +257,49 @@ const Application = () => {
 
           {/* Position */}
           <Section title="Position Desired">
+            <div>
+              <Label className="mb-2 block">Position(s) Applying For <span className="text-maple">*</span></Label>
+              <div className="grid sm:grid-cols-2 gap-2">
+                {[
+                  "General Heavy Equipment Operator",
+                  "Trackhoe/Excavator Operator",
+                  "Dozer Operator",
+                  "Roller Operator",
+                  "Loader Operator",
+                  "Backhoe Operator",
+                  "Crane Operator",
+                  "Dump Truck Driver",
+                  "Other Machinery",
+                ].map((opt) => {
+                  const checked = positions.includes(opt);
+                  return (
+                    <label
+                      key={opt}
+                      className={`flex items-center gap-2 text-sm rounded-md border px-3 py-2 cursor-pointer transition-colors ${
+                        checked
+                          ? "border-maple bg-maple/10 text-foreground"
+                          : "border-border hover:border-maple/60 hover:bg-maple/5"
+                      }`}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => togglePosition(opt)}
+                        className="data-[state=checked]:bg-maple data-[state=checked]:border-maple data-[state=checked]:text-maple-foreground"
+                      />
+                      {opt}
+                    </label>
+                  );
+                })}
+              </div>
+              {positions.includes("Other Machinery") && (
+                <div className="pt-3">
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">Please specify</Label>
+                  <Input value={otherMachinery} onChange={(e) => setOtherMachinery(e.target.value)} placeholder="Specify other machinery" />
+                </div>
+              )}
+            </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Position Applying For" name="position" value={f.position as string} onChange={setStr} required placeholder="Laborer, Operator, Foreman..." />
-              <Field label="Desired Pay" name="desiredPay" value={f.desiredPay as string} onChange={setStr} placeholder="$/hr" />
+              <Field label="Desired Pay" name="desiredPay" value={f.desiredPay as string} onChange={setStr} placeholder="$21+ per hour" />
               <Field label="Date Available to Start" name="availableStart" type="date" value={f.availableStart as string} onChange={setStr} required />
               <div>
                 <Label className="mb-1.5 block">Employment Type</Label>
