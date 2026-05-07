@@ -355,19 +355,14 @@ const Application = () => {
 
           {/* Background */}
           <Section title="Background" subtitle="A conviction will not necessarily disqualify you from employment.">
-            <div>
-              <Label className="mb-1.5 block">Have you ever been convicted of a felony?</Label>
-              <RadioGroup value={f.convicted as string} onValueChange={(v) => set("convicted", v)} className="flex gap-4">
-                <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="no" /> No</label>
-                <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="yes" /> Yes</label>
-              </RadioGroup>
-            </div>
-            {f.convicted === "yes" && (
-              <div>
-                <Label className="mb-1.5 block">Please explain</Label>
-                <Textarea value={f.convictedDetails as string} onChange={(e) => set("convictedDetails", e.target.value)} rows={3} />
-              </div>
-            )}
+            <YesNo
+              label="Have you ever been convicted of a felony?"
+              name="convicted"
+              value={f.convicted as string}
+              onChange={setStr}
+              detailsName="convictedDetails"
+              detailsValue={f.convictedDetails as string}
+            />
           </Section>
 
           {/* Emergency */}
