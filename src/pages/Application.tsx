@@ -97,8 +97,12 @@ const Field = ({
 
 const Application = () => {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [positions, setPositions] = useState<string[]>([]);
+  const [otherMachinery, setOtherMachinery] = useState("");
+  const [applicationSource, setApplicationSource] = useState("Direct");
   const [f, setF] = useState<FormState>({
     fullName: "", email: "", phone: "", address: "", city: "", state: "", zip: "",
     dob: "", ssn: "", driversLicense: "", licenseState: "",
