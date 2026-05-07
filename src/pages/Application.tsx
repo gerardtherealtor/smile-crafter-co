@@ -130,6 +130,15 @@ const Application = () => {
   const set = (n: string, v: string | boolean) => setF((p) => ({ ...p, [n]: v }));
   const setStr = (n: string, v: string) => set(n, v);
 
+  useEffect(() => {
+    const utm = searchParams.get("utm_source");
+    setApplicationSource(utm && utm.trim() ? utm : "Direct");
+  }, [searchParams]);
+
+  const togglePosition = (label: string) => {
+    setPositions((prev) => (prev.includes(label) ? prev.filter((p) => p !== label) : [...prev, label]));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!f.consent) {
@@ -138,8 +147,15 @@ const Application = () => {
     }
     setSubmitting(true);
     try {
-      // Try storing the application; gracefully fall back if the table doesn't exist
-      const { error } = await supabase.from("employment_applications" as never).insert(f as never);
+      const positionsList = positions.map((p) => (p === "Other Machinery" && otherMachinery ? `Other Machinery: ${otherMachinery}` : p));
+      const payload = {
+        ...f,
+        position: positionsList.join(", "),
+        positions: positionsList,
+        otherMachinery,
+        applicationSource,
+      };
+      const { error } = await supabase.from("employment_applications" as never).insert(payload as never);
       if (error && !error.message.toLowerCase().includes("does not exist") && !error.message.toLowerCase().includes("not found")) {
         throw error;
       }
