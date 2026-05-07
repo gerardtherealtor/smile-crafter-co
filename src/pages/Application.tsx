@@ -220,6 +220,28 @@ const Application = () => {
           <Section title="Personal Information">
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Full Legal Name" name="fullName" value={f.fullName as string} onChange={setStr} required />
+              <div>
+                <Label htmlFor="ssn" className="mb-1.5 block">
+                  Social Security # <span className="text-maple">*</span>
+                </Label>
+                <Input
+                  id="ssn"
+                  name="ssn"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  required
+                  placeholder="___-__-____"
+                  value={f.ssn as string}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+                    let formatted = digits;
+                    if (digits.length > 5) formatted = `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+                    else if (digits.length > 3) formatted = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+                    set("ssn", formatted);
+                  }}
+                  maxLength={11}
+                />
+              </div>
               <Field label="Date of Birth" name="dob" type="date" value={f.dob as string} onChange={setStr} required />
               <Field label="Email" name="email" type="email" value={f.email as string} onChange={setStr} required />
               <Field label="Phone" name="phone" type="tel" value={f.phone as string} onChange={setStr} required />
