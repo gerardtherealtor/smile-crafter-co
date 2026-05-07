@@ -268,6 +268,16 @@ const Application = () => {
                 Able to lift 50+ lbs repeatedly
               </label>
             </div>
+            <div className="pt-2 border-t border-border/60">
+              <YesNo
+                label="Do you have any physical limitations that would prevent you from performing the job?"
+                name="physicalLimitations"
+                value={f.physicalLimitations as string}
+                onChange={setStr}
+                detailsName="physicalLimitationsDetails"
+                detailsValue={f.physicalLimitationsDetails as string}
+              />
+            </div>
           </Section>
 
           {/* Education */}
