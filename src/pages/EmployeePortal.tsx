@@ -335,14 +335,17 @@ const EmployeePortal = () => {
                 <div className="grid sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-3">
                     <Label>Job Site</Label>
-                    <Select value={s.jobId} onValueChange={(v) => updateShift(i, { jobId: v })}>
-                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pick a job" /></SelectTrigger>
-                      <SelectContent>
-                        {jobs.map((j) => (
-                          <SelectItem key={j.id} value={j.id}>{j.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <select
+                      value={s.jobId}
+                      onChange={(e) => updateShift(i, { jobId: e.target.value })}
+                      className="mt-1.5 flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:1em_1em]"
+                      style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.5'><polyline points='6 9 12 15 18 9'/></svg>\")", paddingRight: "2.25rem" }}
+                    >
+                      <option value="" disabled>Pick a job</option>
+                      {jobs.map((j) => (
+                        <option key={j.id} value={j.id}>{j.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <Label>Clock In</Label>
