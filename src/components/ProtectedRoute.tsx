@@ -24,9 +24,8 @@ export const ProtectedRoute = ({
   if (requireRole === "admin" && role !== "admin") {
     return <Navigate to="/employee" replace />;
   }
-  if (requireRole === "employee" && role !== "employee" && role !== "admin") {
-    return <Navigate to="/auth" replace />;
-  }
+  // Authenticated users without an explicit role still get the employee view
+  // (prevents redirect loops if the user_roles row is missing or slow to load).
 
   return <>{children}</>;
 };
