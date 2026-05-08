@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ArrowLeft, HardHat, Fingerprint } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   isBiometricAvailable,
   hasSavedCredentials,
   saveCredentials,
+  clearCredentials,
   verifyAndGetCredentials,
 } from "@/lib/biometric";
 
@@ -31,6 +33,8 @@ const AuthPage = () => {
   const { user, role, loading, roleLoading } = useAuth();
   const [busy, setBusy] = useState(false);
   const [bioReady, setBioReady] = useState(false);
+  const [bioSupported, setBioSupported] = useState(false);
+  const [remember, setRemember] = useState(false);
 
   useEffect(() => {
     if (loading || !user) return;
@@ -38,15 +42,19 @@ const AuthPage = () => {
     navigate(role === "admin" ? "/admin" : "/employee", { replace: true });
   }, [user, role, loading, roleLoading, navigate]);
 
-  // Detect Face ID / Touch ID / Fingerprint availability + saved credentials.
+  // Detect Face ID / Touch ID / Fingerprint support + saved credentials.
   useEffect(() => {
     (async () => {
-      const ok = (await isBiometricAvailable()) && (await hasSavedCredentials());
-      setBioReady(ok);
+      const supported = await isBiometricAvailable();
+      setBioSupported(supported);
+      const saved = supported && (await hasSavedCredentials());
+      setBioReady(saved);
+      // Pre-check the box if the user already opted in previously.
+      if (saved) setRemember(true);
     })();
   }, []);
 
-  const doLogin = async (email: string, password: string, persistBio = false) => {
+  const doLogin = async (email: string, password: string, persistBio: boolean) => {
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
@@ -55,7 +63,12 @@ const AuthPage = () => {
       return false;
     }
     toast.success("Welcome back");
-    if (persistBio) await saveCredentials(email, password);
+    if (persistBio) {
+      await saveCredentials(email, password);
+    } else {
+      // User unchecked it → clear any previously saved credentials.
+      await clearCredentials();
+    }
     return true;
   };
 
@@ -70,8 +83,7 @@ const AuthPage = () => {
       toast.error(parsed.error.issues[0].message);
       return;
     }
-    // Save credentials to Keychain/Keystore on successful login (native only).
-    await doLogin(parsed.data.email, parsed.data.password, true);
+    await doLogin(parsed.data.email, parsed.data.password, remember);
   };
 
   const handleBiometric = async () => {
@@ -160,6 +172,22 @@ const AuthPage = () => {
                 <Label htmlFor="login-password">Password</Label>
                 <Input id="login-password" name="password" type="password" autoComplete="current-password" required className="mt-1.5" />
               </div>
+              {bioSupported && (
+                <label className="flex items-start gap-2.5 cursor-pointer select-none rounded-md border border-border bg-background/50 p-3">
+                  <Checkbox
+                    id="remember"
+                    checked={remember}
+                    onCheckedChange={(v) => setRemember(v === true)}
+                    className="mt-0.5 data-[state=checked]:bg-maple data-[state=checked]:border-maple"
+                  />
+                  <span className="text-sm leading-snug">
+                    <span className="font-medium">Remember me</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      Save my login and let me sign in with Face ID / Fingerprint next time.
+                    </span>
+                  </span>
+                </label>
+              )}
               <Button type="submit" disabled={busy} className="w-full bg-primary hover:bg-primary/90 font-display tracking-wider">
                 {busy ? "Signing in…" : "Sign In"}
               </Button>
