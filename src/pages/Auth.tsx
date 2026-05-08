@@ -30,13 +30,34 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const { user, role, loading, roleLoading } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [bioReady, setBioReady] = useState(false);
 
   useEffect(() => {
     if (loading || !user) return;
-    // If role lookup is still pending, wait. Otherwise navigate — default to employee.
     if (roleLoading) return;
     navigate(role === "admin" ? "/admin" : "/employee", { replace: true });
   }, [user, role, loading, roleLoading, navigate]);
+
+  // Detect Face ID / Touch ID / Fingerprint availability + saved credentials.
+  useEffect(() => {
+    (async () => {
+      const ok = (await isBiometricAvailable()) && (await hasSavedCredentials());
+      setBioReady(ok);
+    })();
+  }, []);
+
+  const doLogin = async (email: string, password: string, persistBio = false) => {
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    toast.success("Welcome back");
+    if (persistBio) await saveCredentials(email, password);
+    return true;
+  };
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -49,17 +70,17 @@ const AuthPage = () => {
       toast.error(parsed.error.issues[0].message);
       return;
     }
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: parsed.data.email,
-      password: parsed.data.password,
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Welcome back");
+    // Save credentials to Keychain/Keystore on successful login (native only).
+    await doLogin(parsed.data.email, parsed.data.password, true);
+  };
+
+  const handleBiometric = async () => {
+    const creds = await verifyAndGetCredentials();
+    if (!creds) {
+      toast.error("Biometric sign-in cancelled");
+      return;
     }
+    await doLogin(creds.username, creds.password, false);
   };
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
