@@ -201,15 +201,20 @@ const AuthPage = () => {
                   <span className="text-sm leading-snug">
                     <span className="font-medium">Remember me</span>
                     <span className="block text-xs text-muted-foreground mt-0.5">
-                      Save my login and let me sign in with Face ID / Fingerprint next time.
+                      Save my login and let me sign in with {bioLabel} next time.
                     </span>
                   </span>
                 </label>
               )}
-              <Button type="submit" disabled={busy} className="w-full bg-primary hover:bg-primary/90 font-display tracking-wider">
+              <Button type="submit" disabled={busy || bioAuthenticating} className="w-full bg-primary hover:bg-primary/90 font-display tracking-wider">
                 {busy ? "Signing in…" : "Sign In"}
               </Button>
-              {bioReady && (
+
+              {bioChecking ? (
+                <p className="text-xs text-center text-muted-foreground pt-1">
+                  Checking for {bioLabel}…
+                </p>
+              ) : bioReady ? (
                 <>
                   <div className="relative my-2">
                     <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
@@ -220,15 +225,26 @@ const AuthPage = () => {
                   <Button
                     type="button"
                     onClick={handleBiometric}
-                    disabled={busy}
+                    disabled={busy || bioAuthenticating}
                     variant="outline"
                     className="w-full border-maple/40 bg-maple/10 text-maple hover:bg-maple hover:text-maple-foreground font-display tracking-wider"
                   >
-                    <Fingerprint className="h-4 w-4 mr-2" />
-                    Sign in with Face ID / Fingerprint
+                    <Fingerprint className={`h-4 w-4 mr-2 ${bioAuthenticating ? "animate-pulse" : ""}`} />
+                    {bioAuthenticating
+                      ? `Authenticating with ${bioLabel}…`
+                      : busy
+                        ? "Signing in…"
+                        : `Sign in with ${bioLabel}`}
                   </Button>
+                  <p className="text-[11px] text-center text-muted-foreground">
+                    Uses your saved login on this device.
+                  </p>
                 </>
-              )}
+              ) : bioSupported ? (
+                <p className="text-xs text-center text-muted-foreground pt-1">
+                  {bioLabel} sign-in will appear here after you sign in once with “Remember me” checked.
+                </p>
+              ) : null}
             </form>
           </TabsContent>
 
