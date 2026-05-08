@@ -100,12 +100,17 @@ const AuthPage = () => {
   };
 
   const handleBiometric = async () => {
-    const creds = await verifyAndGetCredentials();
-    if (!creds) {
-      toast.error("Biometric sign-in cancelled");
-      return;
+    setBioAuthenticating(true);
+    try {
+      const creds = await verifyAndGetCredentials();
+      if (!creds) {
+        toast.error("Biometric sign-in cancelled");
+        return;
+      }
+      await doLogin(creds.username, creds.password, false);
+    } finally {
+      setBioAuthenticating(false);
     }
-    await doLogin(creds.username, creds.password, false);
   };
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
