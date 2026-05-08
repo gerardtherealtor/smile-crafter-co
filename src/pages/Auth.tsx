@@ -8,7 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, HardHat } from "lucide-react";
+import { ArrowLeft, HardHat, Fingerprint } from "lucide-react";
+import {
+  isBiometricAvailable,
+  hasSavedCredentials,
+  saveCredentials,
+  verifyAndGetCredentials,
+} from "@/lib/biometric";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Enter a valid email").max(255),
