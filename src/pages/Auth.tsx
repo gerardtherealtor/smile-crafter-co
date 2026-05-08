@@ -56,12 +56,14 @@ const AuthPage = () => {
   // Detect Face ID / Touch ID / Fingerprint support + saved credentials.
   useEffect(() => {
     (async () => {
+      setBioChecking(true);
       const supported = await isBiometricAvailable();
       setBioSupported(supported);
       const saved = supported && (await hasSavedCredentials());
       setBioReady(saved);
       // Pre-check the box if the user already opted in previously.
       if (saved) setRemember(true);
+      setBioChecking(false);
     })();
   }, []);
 
