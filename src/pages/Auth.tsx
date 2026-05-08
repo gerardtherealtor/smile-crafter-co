@@ -34,7 +34,18 @@ const AuthPage = () => {
   const [busy, setBusy] = useState(false);
   const [bioReady, setBioReady] = useState(false);
   const [bioSupported, setBioSupported] = useState(false);
+  const [bioChecking, setBioChecking] = useState(true);
+  const [bioAuthenticating, setBioAuthenticating] = useState(false);
   const [remember, setRemember] = useState(false);
+
+  // Friendly label for the platform's biometric method.
+  const bioLabel = (() => {
+    if (typeof navigator === "undefined") return "Face ID / Fingerprint";
+    const ua = navigator.userAgent || "";
+    if (/iPhone|iPad|iPod|Mac/i.test(ua)) return "Face ID / Touch ID";
+    if (/Android/i.test(ua)) return "Fingerprint";
+    return "Face ID / Fingerprint";
+  })();
 
   useEffect(() => {
     if (loading || !user) return;
