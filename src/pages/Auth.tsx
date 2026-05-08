@@ -163,6 +163,26 @@ const AuthPage = () => {
               <Button type="submit" disabled={busy} className="w-full bg-primary hover:bg-primary/90 font-display tracking-wider">
                 {busy ? "Signing in…" : "Sign In"}
               </Button>
+              {bioReady && (
+                <>
+                  <div className="relative my-2">
+                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                    <div className="relative flex justify-center text-xs uppercase tracking-wider">
+                      <span className="bg-card px-2 text-muted-foreground">or</span>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleBiometric}
+                    disabled={busy}
+                    variant="outline"
+                    className="w-full border-maple/40 bg-maple/10 text-maple hover:bg-maple hover:text-maple-foreground font-display tracking-wider"
+                  >
+                    <Fingerprint className="h-4 w-4 mr-2" />
+                    Sign in with Face ID / Fingerprint
+                  </Button>
+                </>
+              )}
             </form>
           </TabsContent>
 
