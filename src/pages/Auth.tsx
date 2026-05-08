@@ -172,6 +172,22 @@ const AuthPage = () => {
                 <Label htmlFor="login-password">Password</Label>
                 <Input id="login-password" name="password" type="password" autoComplete="current-password" required className="mt-1.5" />
               </div>
+              {bioSupported && (
+                <label className="flex items-start gap-2.5 cursor-pointer select-none rounded-md border border-border bg-background/50 p-3">
+                  <Checkbox
+                    id="remember"
+                    checked={remember}
+                    onCheckedChange={(v) => setRemember(v === true)}
+                    className="mt-0.5 data-[state=checked]:bg-maple data-[state=checked]:border-maple"
+                  />
+                  <span className="text-sm leading-snug">
+                    <span className="font-medium">Remember me</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      Save my login and let me sign in with Face ID / Fingerprint next time.
+                    </span>
+                  </span>
+                </label>
+              )}
               <Button type="submit" disabled={busy} className="w-full bg-primary hover:bg-primary/90 font-display tracking-wider">
                 {busy ? "Signing in…" : "Sign In"}
               </Button>
