@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ArrowLeft, HardHat, Fingerprint } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   isBiometricAvailable,
   hasSavedCredentials,
   saveCredentials,
+  clearCredentials,
   verifyAndGetCredentials,
 } from "@/lib/biometric";
 
