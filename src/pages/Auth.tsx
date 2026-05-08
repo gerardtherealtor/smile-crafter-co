@@ -26,9 +26,10 @@ const AuthPage = () => {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && !roleLoading && user && role) {
-      navigate(role === "admin" ? "/admin" : "/employee", { replace: true });
-    }
+    if (loading || !user) return;
+    // If role lookup is still pending, wait. Otherwise navigate — default to employee.
+    if (roleLoading) return;
+    navigate(role === "admin" ? "/admin" : "/employee", { replace: true });
   }, [user, role, loading, roleLoading, navigate]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
