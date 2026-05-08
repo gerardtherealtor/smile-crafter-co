@@ -8,7 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, HardHat } from "lucide-react";
+import { ArrowLeft, HardHat, Fingerprint } from "lucide-react";
+import {
+  isBiometricAvailable,
+  hasSavedCredentials,
+  saveCredentials,
+  verifyAndGetCredentials,
+} from "@/lib/biometric";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Enter a valid email").max(255),
@@ -24,13 +30,34 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const { user, role, loading, roleLoading } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [bioReady, setBioReady] = useState(false);
 
   useEffect(() => {
     if (loading || !user) return;
-    // If role lookup is still pending, wait. Otherwise navigate — default to employee.
     if (roleLoading) return;
     navigate(role === "admin" ? "/admin" : "/employee", { replace: true });
   }, [user, role, loading, roleLoading, navigate]);
+
+  // Detect Face ID / Touch ID / Fingerprint availability + saved credentials.
+  useEffect(() => {
+    (async () => {
+      const ok = (await isBiometricAvailable()) && (await hasSavedCredentials());
+      setBioReady(ok);
+    })();
+  }, []);
+
+  const doLogin = async (email: string, password: string, persistBio = false) => {
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    toast.success("Welcome back");
+    if (persistBio) await saveCredentials(email, password);
+    return true;
+  };
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -43,17 +70,17 @@ const AuthPage = () => {
       toast.error(parsed.error.issues[0].message);
       return;
     }
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: parsed.data.email,
-      password: parsed.data.password,
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Welcome back");
+    // Save credentials to Keychain/Keystore on successful login (native only).
+    await doLogin(parsed.data.email, parsed.data.password, true);
+  };
+
+  const handleBiometric = async () => {
+    const creds = await verifyAndGetCredentials();
+    if (!creds) {
+      toast.error("Biometric sign-in cancelled");
+      return;
     }
+    await doLogin(creds.username, creds.password, false);
   };
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -136,6 +163,26 @@ const AuthPage = () => {
               <Button type="submit" disabled={busy} className="w-full bg-primary hover:bg-primary/90 font-display tracking-wider">
                 {busy ? "Signing in…" : "Sign In"}
               </Button>
+              {bioReady && (
+                <>
+                  <div className="relative my-2">
+                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                    <div className="relative flex justify-center text-xs uppercase tracking-wider">
+                      <span className="bg-card px-2 text-muted-foreground">or</span>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleBiometric}
+                    disabled={busy}
+                    variant="outline"
+                    className="w-full border-maple/40 bg-maple/10 text-maple hover:bg-maple hover:text-maple-foreground font-display tracking-wider"
+                  >
+                    <Fingerprint className="h-4 w-4 mr-2" />
+                    Sign in with Face ID / Fingerprint
+                  </Button>
+                </>
+              )}
             </form>
           </TabsContent>
 

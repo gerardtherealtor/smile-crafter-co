@@ -1,18 +1,23 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// Production Capacitor config — use this when building for App Store / Play Store submission.
+// PRODUCTION Capacitor config — used for App Store / Play Store builds.
+// No `server.url`, so the app ships the bundled web code in `dist/`
+// instead of trying to load the Lovable preview URL.
 //
-// HOW TO USE FOR A STORE BUILD (on your local machine):
-//   1. Rename `capacitor.config.ts`        -> `capacitor.config.dev.ts`
-//   2. Rename `capacitor.config.prod.ts`   -> `capacitor.config.ts`
-//   3. npm run build && npx cap sync
-//   4. Open in Xcode / Android Studio and archive/upload.
+// HOW TO MAKE A STORE BUILD (run on your own machine):
+//   1. mv capacitor.config.ts        capacitor.config.dev.ts
+//   2. mv capacitor.config.prod.ts   capacitor.config.ts
+//   3. npm install
+//   4. npm run build
+//   5. npx cap sync
+//   6. npx capacitor-assets generate   # regenerates icon + splash from /resources
+//   7. npx cap open ios   (or  npx cap open android)
+//   8. Archive & upload from Xcode / Android Studio.
 //
-// The key difference: no `server.url`, so the app ships the bundled web code
-// instead of loading from the Lovable preview URL.
+// After uploading, swap the configs back so live preview keeps hot-reloading.
 
 const config: CapacitorConfig = {
-    appId: 'com.dwaynenoeconstruction.app',
+  appId: 'com.dwaynenoeconstruction.app',
   appName: 'Dwayne Noe Construction',
   webDir: 'dist',
   ios: {

@@ -51,9 +51,14 @@ export const PortalLayout = ({
             <Button asChild variant="ghost" size="sm" className="font-display tracking-wider">
               <Link to="/employee">My Time</Link>
             </Button>
-            <Button onClick={handleLogout} variant="outline" size="sm" className="border-border">
-              <LogOut className="h-4 w-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">Sign Out</span>
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              size="sm"
+              className="border-maple/40 bg-maple/10 text-maple hover:bg-maple hover:text-maple-foreground font-display tracking-wider"
+            >
+              <LogOut className="h-4 w-4 mr-1.5" />
+              Sign Out
             </Button>
           </div>
         </div>
