@@ -51,9 +51,6 @@ const Index = () => {
             />
           </Link>
           <div className="flex items-center gap-2">
-            <Button asChild size="sm" variant="outline" className="border-maple/50 text-maple hover:bg-maple/10 font-display tracking-wider hidden sm:inline-flex">
-              <Link to="/application">Apply Now</Link>
-            </Button>
             <Button asChild size="sm" className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
               <Link to={ctaTo}>{ctaLabel}</Link>
             </Button>
