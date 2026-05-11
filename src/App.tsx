@@ -10,7 +10,7 @@ import Auth from "./pages/Auth.tsx";
 import EmployeePortal from "./pages/EmployeePortal.tsx";
 import AdminPortal from "./pages/AdminPortal.tsx";
 import Unsubscribe from "./pages/Unsubscribe.tsx";
-import Application from "./pages/Application.tsx";
+
 import Privacy from "./pages/Privacy.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -27,7 +27,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
-            <Route path="/application" element={<Application />} />
+            
             <Route path="/privacy" element={<Privacy />} />
             <Route
               path="/employee"
