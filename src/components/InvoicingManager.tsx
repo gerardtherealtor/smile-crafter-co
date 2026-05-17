@@ -370,17 +370,25 @@ export const InvoicingManager = ({
   };
 
   const exportFiltered = () => {
-    let target = filtered.filter((g) => g.entries.length > 0);
-    if (exportMode === "open") {
-      target = target.filter((g) => !g.invoice);
-    } else {
-      target = target.filter((g) => !!g.invoice);
-    }
-    if (target.length === 0) { toast.info(`No ${exportMode} job-weeks match your current filters`); return; }
-    setPreview({
-      filename: `qbo-invoices-${exportMode}-${new Date().toISOString().slice(0, 10)}.csv`,
-      rows: [QBO_HEADERS, ...target.map(groupToRow)],
-      label: `${target.length} ${exportMode} job-week${target.length === 1 ? "" : "s"} (filtered)`,
+    setIsExporting(true);
+    requestAnimationFrame(() => {
+      let target = filtered.filter((g) => g.entries.length > 0);
+      if (exportMode === "open") {
+        target = target.filter((g) => !g.invoice);
+      } else {
+        target = target.filter((g) => !!g.invoice);
+      }
+      if (target.length === 0) {
+        toast.info(`No ${exportMode} job-weeks match your current filters`);
+        setIsExporting(false);
+        return;
+      }
+      setPreview({
+        filename: `qbo-invoices-${exportMode}-${new Date().toISOString().slice(0, 10)}.csv`,
+        rows: [QBO_HEADERS, ...target.map(groupToRow)],
+        label: `${target.length} ${exportMode} job-week${target.length === 1 ? "" : "s"} (filtered)`,
+      });
+      setIsExporting(false);
     });
   };
 
