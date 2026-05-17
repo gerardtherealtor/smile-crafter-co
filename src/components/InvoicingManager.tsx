@@ -803,7 +803,7 @@ export const InvoicingManager = ({
                 </div>
               </div>
 
-              <ScrollArea className="h-[420px] w-full rounded-lg border border-border">
+              <ScrollArea className="h-[50vh] sm:h-[420px] w-full rounded-lg border border-border">
                 <table className="w-full text-xs">
                   <thead className="bg-muted sticky top-0">
                     <tr>
