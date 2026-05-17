@@ -181,6 +181,10 @@ const AdminPortal = () => {
           </div>
         </TabsContent>
 
+        <TabsContent value="invoicing">
+          <InvoicingManager jobs={jobs} profiles={profiles} />
+        </TabsContent>
+
         <TabsContent value="roster">
           <RosterManager roster={roster} profiles={profiles} jobs={jobs} reload={load} />
         </TabsContent>
