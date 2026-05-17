@@ -275,10 +275,15 @@ export const InvoicingManager = ({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-border bg-card p-4 shadow-deep">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-deep space-y-2">
         <p className="text-sm text-muted-foreground">
           Every job site with logged hours is grouped by week. Check off the box once you've created the
           invoice in QuickBooks — it'll move to <span className="font-semibold">Archived</span>.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Use <span className="font-semibold">Export to QuickBooks</span> to download a CSV in QBO's
+          Invoice import format. In QuickBooks Online: <span className="italic">Settings → Import data → Invoices</span>,
+          upload the file, map the columns, then review & import. Rate/Due Date can be filled in QBO.
         </p>
       </div>
 
@@ -293,14 +298,26 @@ export const InvoicingManager = ({
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search job or address"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={exportAllOpen}
+            className="font-display tracking-wider"
+          >
+            <Download className="h-4 w-4" />
+            Export all open to QuickBooks
+          </Button>
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search job or address"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
       </div>
 
