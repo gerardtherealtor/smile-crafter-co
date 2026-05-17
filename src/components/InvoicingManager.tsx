@@ -220,6 +220,59 @@ export const InvoicingManager = ({
     load();
   };
 
+  // Build a description block summarizing the week's work for this job.
+  const buildDescription = (g: JobWeekGroup) => {
+    if (g.entries.length === 0) return `${g.job.name} — week of ${formatDate(g.week_start)}`;
+    const byDate = new Map<string, TEntry[]>();
+    for (const e of g.entries) {
+      const arr = byDate.get(e.work_date) ?? [];
+      arr.push(e);
+      byDate.set(e.work_date, arr);
+    }
+    const lines: string[] = [];
+    const sortedDates = Array.from(byDate.entries()).sort(([a], [b]) => a.localeCompare(b));
+    for (const [date, items] of sortedDates) {
+      const taskNotes = Array.from(new Set(items.map((i) => i.notes?.trim()).filter(Boolean))) as string[];
+      const crew = Array.from(new Set(items.map((i) => profileName(i.user_id)))).join(", ");
+      const dayHours = items.reduce((s, i) => s + Number(i.hours), 0);
+      const task = taskNotes.length ? ` — ${taskNotes.join("; ")}` : "";
+      lines.push(`${formatDate(date)}: ${formatHours(dayHours)} hr (${crew})${task}`);
+    }
+    return lines.join("\n");
+  };
+
+  const groupToRow = (g: JobWeekGroup): (string | number)[] => {
+    const invNo = `${g.job.name.replace(/[^A-Za-z0-9]+/g, "").slice(0, 10)}-${g.week_start.replace(/-/g, "").slice(2)}`;
+    return [
+      invNo,                                  // InvoiceNo
+      g.job.name,                             // Customer (map to QBO customer)
+      g.week_end,                             // InvoiceDate (end of week)
+      "",                                     // DueDate (fill in QBO)
+      "",                                     // Terms
+      "Labor",                                // Item
+      buildDescription(g),                    // ItemDescription
+      g.totalHours.toFixed(2),                // ItemQuantity
+      "",                                     // ItemRate (fill in QBO)
+      "",                                     // ItemAmount (QBO computes)
+      `Week ${formatDate(g.week_start)} – ${formatDate(g.week_end)}${g.job.address ? ` · ${g.job.address}` : ""}`, // Memo
+    ];
+  };
+
+  const exportOne = (g: JobWeekGroup) => {
+    const rows = [QBO_HEADERS, groupToRow(g)];
+    const fname = `qbo-invoice-${g.job.name.replace(/[^A-Za-z0-9]+/g, "_")}-${g.week_start}.csv`;
+    downloadCsv(fname, rows);
+    toast.success("CSV downloaded");
+  };
+
+  const exportAllOpen = () => {
+    const open = groups.filter((g) => !g.invoice && g.entries.length > 0);
+    if (open.length === 0) { toast.info("No open job-weeks to export"); return; }
+    const rows: (string | number)[][] = [QBO_HEADERS, ...open.map(groupToRow)];
+    downloadCsv(`qbo-invoices-open-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    toast.success(`Exported ${open.length} invoice${open.length === 1 ? "" : "s"}`);
+  };
+
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-card p-4 shadow-deep">
