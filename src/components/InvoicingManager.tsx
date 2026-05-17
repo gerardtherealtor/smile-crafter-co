@@ -446,11 +446,11 @@ export const InvoicingManager = ({
             type="button"
             variant="outline"
             size="sm"
-            onClick={exportAllOpen}
+            onClick={exportFiltered}
             className="font-display tracking-wider self-start lg:self-auto"
           >
             <Download className="h-4 w-4" />
-            Export all open to QuickBooks
+            Export filtered to QuickBooks
           </Button>
         </div>
 
