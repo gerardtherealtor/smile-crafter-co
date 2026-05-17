@@ -105,6 +105,7 @@ export const InvoicingManager = ({
   const [jobFilter, setJobFilter] = useState<string>("all");
   const [rangeFilter, setRangeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [exportMode, setExportMode] = useState<"open" | "invoiced">("open");
 
   const load = async () => {
     setLoading(true);
@@ -368,12 +369,17 @@ export const InvoicingManager = ({
   };
 
   const exportFiltered = () => {
-    const target = filtered.filter((g) => g.entries.length > 0);
-    if (target.length === 0) { toast.info("No job-weeks match your current filters"); return; }
+    let target = filtered.filter((g) => g.entries.length > 0);
+    if (exportMode === "open") {
+      target = target.filter((g) => !g.invoice);
+    } else {
+      target = target.filter((g) => !!g.invoice);
+    }
+    if (target.length === 0) { toast.info(`No ${exportMode} job-weeks match your current filters`); return; }
     setPreview({
-      filename: `qbo-invoices-${new Date().toISOString().slice(0, 10)}.csv`,
+      filename: `qbo-invoices-${exportMode}-${new Date().toISOString().slice(0, 10)}.csv`,
       rows: [QBO_HEADERS, ...target.map(groupToRow)],
-      label: `${target.length} job-week${target.length === 1 ? "" : "s"} (filtered)`,
+      label: `${target.length} ${exportMode} job-week${target.length === 1 ? "" : "s"} (filtered)`,
     });
   };
 
@@ -451,16 +457,27 @@ export const InvoicingManager = ({
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={exportFiltered}
-            className="font-display tracking-wider self-start lg:self-auto"
-          >
-            <Download className="h-4 w-4" />
-            Export filtered to QuickBooks
-          </Button>
+          <div className="flex items-center gap-2 self-start lg:self-auto">
+            <Select value={exportMode} onValueChange={(v) => setExportMode(v as "open" | "invoiced")}>
+              <SelectTrigger className="w-[140px] h-9 text-xs font-display tracking-wider">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">Open only</SelectItem>
+                <SelectItem value="invoiced">Invoiced only</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={exportFiltered}
+              className="font-display tracking-wider"
+            >
+              <Download className="h-4 w-4" />
+              Export to QuickBooks
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_180px_180px_180px_auto]">
