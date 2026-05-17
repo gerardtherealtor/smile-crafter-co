@@ -4,11 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
   formatDate, formatHours, formatTime12, weekEnd, weekStart,
 } from "@/lib/time";
-import { ChevronDown, ChevronRight, Download, FileCheck2, Search } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download, FileCheck2, Search } from "lucide-react";
 
 // Build a QuickBooks Online Invoice Import CSV.
 // Headers match QBO's Invoice import format (Settings → Import data → Invoices).
@@ -258,19 +262,74 @@ export const InvoicingManager = ({
     ];
   };
 
+  // Preview state — opened before download so admin can verify QBO column mapping.
+  const [preview, setPreview] = useState<{
+    filename: string;
+    rows: (string | number)[][];
+    label: string;
+  } | null>(null);
+
   const exportOne = (g: JobWeekGroup) => {
-    const rows = [QBO_HEADERS, groupToRow(g)];
-    const fname = `qbo-invoice-${g.job.name.replace(/[^A-Za-z0-9]+/g, "_")}-${g.week_start}.csv`;
-    downloadCsv(fname, rows);
-    toast.success("CSV downloaded");
+    setPreview({
+      filename: `qbo-invoice-${g.job.name.replace(/[^A-Za-z0-9]+/g, "_")}-${g.week_start}.csv`,
+      rows: [QBO_HEADERS, groupToRow(g)],
+      label: `${g.job.name} · week of ${formatDate(g.week_start)}`,
+    });
   };
 
   const exportAllOpen = () => {
     const open = groups.filter((g) => !g.invoice && g.entries.length > 0);
     if (open.length === 0) { toast.info("No open job-weeks to export"); return; }
-    const rows: (string | number)[][] = [QBO_HEADERS, ...open.map(groupToRow)];
-    downloadCsv(`qbo-invoices-open-${new Date().toISOString().slice(0, 10)}.csv`, rows);
-    toast.success(`Exported ${open.length} invoice${open.length === 1 ? "" : "s"}`);
+    setPreview({
+      filename: `qbo-invoices-open-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows: [QBO_HEADERS, ...open.map(groupToRow)],
+      label: `${open.length} open job-week${open.length === 1 ? "" : "s"}`,
+    });
+  };
+
+  // QBO column requirements — must be present on every data row.
+  const REQUIRED_COLS = ["InvoiceNo", "Customer", "InvoiceDate", "Item(Product/Service)", "ItemQuantity"];
+  const previewValidation = useMemo(() => {
+    if (!preview) return { issues: [] as string[], ok: true };
+    const issues: string[] = [];
+    const header = preview.rows[0] as string[];
+    for (let i = 0; i < QBO_HEADERS.length; i++) {
+      if (header[i] !== QBO_HEADERS[i]) {
+        issues.push(`Header column ${i + 1} should be "${QBO_HEADERS[i]}" but is "${header[i] ?? "(missing)"}"`);
+      }
+    }
+    const qIdx = header.indexOf("ItemQuantity");
+    const dIdx = header.indexOf("InvoiceDate");
+    const requiredIdx = REQUIRED_COLS.map((c) => header.indexOf(c));
+    for (let r = 1; r < preview.rows.length; r++) {
+      const row = preview.rows[r];
+      REQUIRED_COLS.forEach((col, i) => {
+        const idx = requiredIdx[i];
+        if (idx < 0) return;
+        if (!String(row[idx] ?? "").trim()) issues.push(`Row ${r}: missing required "${col}"`);
+      });
+      if (qIdx >= 0) {
+        const q = Number(row[qIdx]);
+        if (!Number.isFinite(q) || q <= 0) {
+          issues.push(`Row ${r}: ItemQuantity "${row[qIdx]}" is not a positive number`);
+        }
+      }
+      if (dIdx >= 0) {
+        const d = String(row[dIdx] ?? "");
+        if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+          issues.push(`Row ${r}: InvoiceDate "${d}" is not YYYY-MM-DD`);
+        }
+      }
+    }
+    return { issues, ok: issues.length === 0 };
+  }, [preview]);
+
+  const confirmDownload = () => {
+    if (!preview) return;
+    downloadCsv(preview.filename, preview.rows);
+    const count = preview.rows.length - 1;
+    toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} to CSV`);
+    setPreview(null);
   };
 
   return (
@@ -484,6 +543,105 @@ export const InvoicingManager = ({
           );
         })}
       </div>
+
+      <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle className="font-display tracking-wider">
+              CSV Preview — QuickBooks Online
+            </DialogTitle>
+            <DialogDescription>
+              {preview?.label} · {preview ? preview.rows.length - 1 : 0} invoice row(s) ·{" "}
+              <span className="font-mono">{preview?.filename}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {preview && (
+            <div className="space-y-3">
+              <div
+                className={`rounded-lg border p-3 text-sm flex items-start gap-2 ${
+                  previewValidation.ok
+                    ? "border-maple/40 bg-maple/10 text-maple"
+                    : "border-destructive/40 bg-destructive/10 text-destructive"
+                }`}
+              >
+                {previewValidation.ok ? (
+                  <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                )}
+                <div className="flex-1">
+                  {previewValidation.ok ? (
+                    <span>All {QBO_HEADERS.length} columns match the QBO Invoice import format.</span>
+                  ) : (
+                    <div>
+                      <div className="font-semibold mb-1">
+                        {previewValidation.issues.length} issue{previewValidation.issues.length === 1 ? "" : "s"} found:
+                      </div>
+                      <ul className="list-disc list-inside space-y-0.5 text-xs">
+                        {previewValidation.issues.slice(0, 10).map((i, idx) => (
+                          <li key={idx}>{i}</li>
+                        ))}
+                        {previewValidation.issues.length > 10 && (
+                          <li>…and {previewValidation.issues.length - 10} more</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <ScrollArea className="h-[420px] w-full rounded-lg border border-border">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <th className="px-2 py-2 text-left font-display tracking-wider w-10">#</th>
+                      {(preview.rows[0] as string[]).map((h, i) => (
+                        <th
+                          key={i}
+                          className={`px-2 py-2 text-left font-display tracking-wider whitespace-nowrap ${
+                            h === QBO_HEADERS[i] ? "" : "text-destructive"
+                          }`}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.rows.slice(1).map((row, r) => (
+                      <tr key={r} className="border-t border-border align-top">
+                        <td className="px-2 py-2 text-muted-foreground">{r + 1}</td>
+                        {row.map((cell, c) => (
+                          <td key={c} className="px-2 py-2 max-w-[260px]">
+                            <div className="whitespace-pre-wrap break-words">
+                              {String(cell ?? "")}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setPreview(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDownload}
+              disabled={!previewValidation.ok}
+              className="font-display tracking-wider"
+            >
+              <Download className="h-4 w-4" />
+              Download CSV
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
