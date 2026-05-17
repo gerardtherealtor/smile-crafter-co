@@ -757,14 +757,14 @@ export const InvoicingManager = ({
       </div>
 
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-5xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="font-display tracking-wider">
+            <DialogTitle className="font-display tracking-wider text-base sm:text-lg">
               CSV Preview — QuickBooks Online
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm break-words">
               {preview?.label} · {preview ? preview.rows.length - 1 : 0} invoice row(s) ·{" "}
-              <span className="font-mono">{preview?.filename}</span>
+              <span className="font-mono break-all">{preview?.filename}</span>
             </DialogDescription>
           </DialogHeader>
 
