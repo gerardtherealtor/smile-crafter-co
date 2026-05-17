@@ -453,22 +453,22 @@ export const InvoicingManager = ({
 
       <div className="space-y-3">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
-            <TabsList>
-              <TabsTrigger value="open" className="font-display tracking-wider">
+          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)} className="w-full lg:w-auto">
+            <TabsList className="grid w-full grid-cols-3 lg:flex lg:w-auto">
+              <TabsTrigger value="open" className="font-display tracking-wider text-xs sm:text-sm">
                 Open ({groups.filter((g) => !g.invoice).length})
               </TabsTrigger>
-              <TabsTrigger value="archived" className="font-display tracking-wider">
+              <TabsTrigger value="archived" className="font-display tracking-wider text-xs sm:text-sm">
                 Archived ({groups.filter((g) => g.invoice).length})
               </TabsTrigger>
-              <TabsTrigger value="all" className="font-display tracking-wider">
+              <TabsTrigger value="all" className="font-display tracking-wider text-xs sm:text-sm">
                 All ({groups.length})
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <div className="flex items-center gap-2 self-start lg:self-auto">
+          <div className="flex items-stretch gap-2 w-full lg:w-auto">
             <Select value={exportMode} onValueChange={(v) => setExportMode(v as "open" | "invoiced")}>
-              <SelectTrigger className="w-[140px] h-9 text-xs font-display tracking-wider">
+              <SelectTrigger className="flex-1 lg:w-[140px] lg:flex-none h-9 text-xs font-display tracking-wider">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -482,20 +482,21 @@ export const InvoicingManager = ({
               size="sm"
               onClick={exportFiltered}
               disabled={isExporting}
-              className="font-display tracking-wider"
+              className="font-display tracking-wider flex-1 lg:flex-none whitespace-nowrap"
             >
               {isExporting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Download className="h-4 w-4" />
               )}
-              {isExporting ? "Building…" : "Export to QuickBooks"}
+              <span className="hidden sm:inline">{isExporting ? "Building…" : "Export to QuickBooks"}</span>
+              <span className="sm:hidden">{isExporting ? "Building…" : "Export"}</span>
             </Button>
           </div>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_180px_180px_180px_auto]">
-          <div className="relative">
+        <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_180px_180px_180px_auto]">
+          <div className="relative sm:col-span-2 lg:col-span-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search job, address, worker, or note"
