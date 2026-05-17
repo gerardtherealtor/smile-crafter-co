@@ -8,7 +8,41 @@ import { toast } from "sonner";
 import {
   formatDate, formatHours, formatTime12, weekEnd, weekStart,
 } from "@/lib/time";
-import { ChevronDown, ChevronRight, FileCheck2, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, FileCheck2, Search } from "lucide-react";
+
+// Build a QuickBooks Online Invoice Import CSV.
+// Headers match QBO's Invoice import format (Settings → Import data → Invoices).
+const QBO_HEADERS = [
+  "InvoiceNo",
+  "Customer",
+  "InvoiceDate",
+  "DueDate",
+  "Terms",
+  "Item(Product/Service)",
+  "ItemDescription",
+  "ItemQuantity",
+  "ItemRate",
+  "ItemAmount",
+  "Memo",
+];
+
+const csvEscape = (v: string | number) => {
+  const s = String(v ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+const downloadCsv = (filename: string, rows: (string | number)[][]) => {
+  const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
 interface Profile { id: string; full_name: string; email: string }
@@ -186,12 +220,70 @@ export const InvoicingManager = ({
     load();
   };
 
+  // Build a description block summarizing the week's work for this job.
+  const buildDescription = (g: JobWeekGroup) => {
+    if (g.entries.length === 0) return `${g.job.name} — week of ${formatDate(g.week_start)}`;
+    const byDate = new Map<string, TEntry[]>();
+    for (const e of g.entries) {
+      const arr = byDate.get(e.work_date) ?? [];
+      arr.push(e);
+      byDate.set(e.work_date, arr);
+    }
+    const lines: string[] = [];
+    const sortedDates = Array.from(byDate.entries()).sort(([a], [b]) => a.localeCompare(b));
+    for (const [date, items] of sortedDates) {
+      const taskNotes = Array.from(new Set(items.map((i) => i.notes?.trim()).filter(Boolean))) as string[];
+      const crew = Array.from(new Set(items.map((i) => profileName(i.user_id)))).join(", ");
+      const dayHours = items.reduce((s, i) => s + Number(i.hours), 0);
+      const task = taskNotes.length ? ` — ${taskNotes.join("; ")}` : "";
+      lines.push(`${formatDate(date)}: ${formatHours(dayHours)} hr (${crew})${task}`);
+    }
+    return lines.join("\n");
+  };
+
+  const groupToRow = (g: JobWeekGroup): (string | number)[] => {
+    const invNo = `${g.job.name.replace(/[^A-Za-z0-9]+/g, "").slice(0, 10)}-${g.week_start.replace(/-/g, "").slice(2)}`;
+    return [
+      invNo,                                  // InvoiceNo
+      g.job.name,                             // Customer (map to QBO customer)
+      g.week_end,                             // InvoiceDate (end of week)
+      "",                                     // DueDate (fill in QBO)
+      "",                                     // Terms
+      "Labor",                                // Item
+      buildDescription(g),                    // ItemDescription
+      g.totalHours.toFixed(2),                // ItemQuantity
+      "",                                     // ItemRate (fill in QBO)
+      "",                                     // ItemAmount (QBO computes)
+      `Week ${formatDate(g.week_start)} – ${formatDate(g.week_end)}${g.job.address ? ` · ${g.job.address}` : ""}`, // Memo
+    ];
+  };
+
+  const exportOne = (g: JobWeekGroup) => {
+    const rows = [QBO_HEADERS, groupToRow(g)];
+    const fname = `qbo-invoice-${g.job.name.replace(/[^A-Za-z0-9]+/g, "_")}-${g.week_start}.csv`;
+    downloadCsv(fname, rows);
+    toast.success("CSV downloaded");
+  };
+
+  const exportAllOpen = () => {
+    const open = groups.filter((g) => !g.invoice && g.entries.length > 0);
+    if (open.length === 0) { toast.info("No open job-weeks to export"); return; }
+    const rows: (string | number)[][] = [QBO_HEADERS, ...open.map(groupToRow)];
+    downloadCsv(`qbo-invoices-open-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    toast.success(`Exported ${open.length} invoice${open.length === 1 ? "" : "s"}`);
+  };
+
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-border bg-card p-4 shadow-deep">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-deep space-y-2">
         <p className="text-sm text-muted-foreground">
           Every job site with logged hours is grouped by week. Check off the box once you've created the
           invoice in QuickBooks — it'll move to <span className="font-semibold">Archived</span>.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Use <span className="font-semibold">Export to QuickBooks</span> to download a CSV in QBO's
+          Invoice import format. In QuickBooks Online: <span className="italic">Settings → Import data → Invoices</span>,
+          upload the file, map the columns, then review & import. Rate/Due Date can be filled in QBO.
         </p>
       </div>
 
@@ -206,14 +298,26 @@ export const InvoicingManager = ({
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search job or address"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={exportAllOpen}
+            className="font-display tracking-wider"
+          >
+            <Download className="h-4 w-4" />
+            Export all open to QuickBooks
+          </Button>
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search job or address"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
       </div>
 
@@ -305,6 +409,20 @@ export const InvoicingManager = ({
 
               {isOpen && (
                 <div className="border-t border-border bg-background/40 p-4 space-y-4">
+                  {g.entries.length > 0 && (
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => exportOne(g)}
+                        className="font-display tracking-wider"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export to QuickBooks
+                      </Button>
+                    </div>
+                  )}
                   {perEmp.size > 0 && (
                     <div>
                       <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">
