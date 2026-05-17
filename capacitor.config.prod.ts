@@ -9,8 +9,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 //   2. mv capacitor.config.prod.ts   capacitor.config.ts
 //   3. npm install
 //   4. npm run build
-//   5. npx cap sync
-//   6. npx capacitor-assets generate   # regenerates icon + splash from /resources
+//   5. npm run native:icons      # regenerates icon + splash from /resources
+//   6. npm run native:sync
 //   7. npx cap open ios   (or  npx cap open android)
 //   8. Archive & upload from Xcode / Android Studio.
 //

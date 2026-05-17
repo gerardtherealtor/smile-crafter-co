@@ -13,11 +13,15 @@ every iOS / Android icon size + splash automatically.
 ## Regenerate after replacing any image
 
 ```bash
-npx capacitor-assets generate
-npx cap sync
+npm run native:icons
+npm run native:sync
 ```
 
 This rewrites `ios/App/App/Assets.xcassets/AppIcon.appiconset/` and
 `android/app/src/main/res/mipmap-*/`, which is what App Store Connect
 and Play Console actually display — `public/app-icon.png` is only the
 favicon for the web build.
+
+If Xcode still shows the generic icon, run the icon command again after
+adding/opening the iOS platform, then in Xcode use Product → Clean Build
+Folder before archiving a new build for App Store Connect.
