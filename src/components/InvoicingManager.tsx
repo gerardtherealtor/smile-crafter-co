@@ -409,6 +409,20 @@ export const InvoicingManager = ({
 
               {isOpen && (
                 <div className="border-t border-border bg-background/40 p-4 space-y-4">
+                  {g.entries.length > 0 && (
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => exportOne(g)}
+                        className="font-display tracking-wider"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export to QuickBooks
+                      </Button>
+                    </div>
+                  )}
                   {perEmp.size > 0 && (
                     <div>
                       <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">
