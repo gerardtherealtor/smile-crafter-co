@@ -625,7 +625,7 @@ export const InvoicingManager = ({
                 invoiced ? "border-border bg-muted/30" : "border-border bg-card"
               }`}
             >
-              <div className="flex items-start gap-3 p-4">
+              <div className="flex items-start gap-3 p-3 sm:p-4">
                 <div className="pt-1">
                   <Checkbox
                     checked={invoiced}
@@ -635,26 +635,26 @@ export const InvoicingManager = ({
                 </div>
                 <button
                   onClick={() => toggleExpand(g.key)}
-                  className="flex-1 text-left"
+                  className="flex-1 text-left min-w-0"
                 >
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div>
-                      <div className="font-display text-lg uppercase tracking-wide">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-display text-base sm:text-lg uppercase tracking-wide break-words">
                         {g.job.name}
                       </div>
                       {g.job.address && (
-                        <div className="text-xs text-muted-foreground">{g.job.address}</div>
+                        <div className="text-xs text-muted-foreground break-words">{g.job.address}</div>
                       )}
                       <div className="text-xs text-muted-foreground mt-1">
                         Week of {formatDate(g.week_start)} – {formatDate(g.week_end)}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-right">
+                    <div className="flex items-center gap-3 sm:gap-4 text-right shrink-0">
                       <div>
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
                           Hours
                         </div>
-                        <div className="font-display text-2xl">{formatHours(g.totalHours)}</div>
+                        <div className="font-display text-xl sm:text-2xl">{formatHours(g.totalHours)}</div>
                       </div>
                       <div className="hidden sm:block">
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
