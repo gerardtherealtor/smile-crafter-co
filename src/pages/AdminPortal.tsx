@@ -95,12 +95,24 @@ const AdminPortal = () => {
   };
 
   const downloadReport = async (path: string) => {
-    const { data, error } = await supabase.storage.from("weekly-reports").createSignedUrl(path, 60 * 10);
+    const { data, error } = await supabase.storage
+      .from("weekly-reports")
+      .createSignedUrl(path, 60 * 10, { download: true });
     if (error || !data) {
       toast.error("Could not generate download link.");
       return;
     }
-    window.open(data.signedUrl, "_blank");
+    // Use an anchor click instead of window.open — mobile Safari/PWA blocks
+    // window.open() after an await because it's not seen as a user gesture.
+    const a = document.createElement("a");
+    a.href = data.signedUrl;
+    a.rel = "noopener";
+    a.target = "_self";
+    const filename = path.split("/").pop() || "weekly-report.pdf";
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
