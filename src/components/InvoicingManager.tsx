@@ -839,14 +839,14 @@ export const InvoicingManager = ({
             </div>
           )}
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPreview(null)}>
+          <DialogFooter className="gap-2 flex-col-reverse sm:flex-row">
+            <Button variant="outline" onClick={() => setPreview(null)} className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
               onClick={confirmDownload}
               disabled={!previewValidation.ok}
-              className="font-display tracking-wider"
+              className="font-display tracking-wider w-full sm:w-auto"
             >
               <Download className="h-4 w-4" />
               Download CSV
