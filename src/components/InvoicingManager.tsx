@@ -188,19 +188,94 @@ export const InvoicingManager = ({
     });
   }, [entries, invoices, jobs]);
 
+  // Date-range presets (compared against week_start).
+  const rangeBounds = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startOfThisWeek = new Date(weekStart(today));
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const minus = (d: Date, days: number) => {
+      const n = new Date(d); n.setDate(n.getDate() - days); return n;
+    };
+    switch (rangeFilter) {
+      case "this_week":
+        return { from: iso(startOfThisWeek), to: null as string | null };
+      case "last_week": {
+        const last = minus(startOfThisWeek, 7);
+        return { from: iso(last), to: iso(minus(startOfThisWeek, 1)) };
+      }
+      case "last_4":
+        return { from: iso(minus(startOfThisWeek, 21)), to: null };
+      case "last_12":
+        return { from: iso(minus(startOfThisWeek, 77)), to: null };
+      case "this_month": {
+        const first = new Date(today.getFullYear(), today.getMonth(), 1);
+        return { from: iso(first), to: null };
+      }
+      case "last_month": {
+        const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const last = new Date(today.getFullYear(), today.getMonth(), 0);
+        return { from: iso(first), to: iso(last) };
+      }
+      default:
+        return { from: null, to: null };
+    }
+  }, [rangeFilter]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return groups.filter((g) => {
+    const result = groups.filter((g) => {
       const isInvoiced = !!g.invoice;
       if (view === "open" && isInvoiced) return false;
       if (view === "archived" && !isInvoiced) return false;
-      if (!q) return true;
-      return (
-        g.job.name.toLowerCase().includes(q) ||
-        (g.job.address ?? "").toLowerCase().includes(q)
-      );
+      if (jobFilter !== "all" && g.job.id !== jobFilter) return false;
+      if (rangeBounds.from && g.week_start < rangeBounds.from) return false;
+      if (rangeBounds.to && g.week_start > rangeBounds.to) return false;
+      if (q) {
+        const hay =
+          `${g.job.name} ${g.job.address ?? ""}`.toLowerCase() + " " +
+          Array.from(g.workerIds).map((id) => profileName(id)).join(" ").toLowerCase() + " " +
+          g.entries.map((e) => e.notes ?? "").join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
     });
-  }, [groups, view, search]);
+
+    const sorted = [...result];
+    switch (sortBy) {
+      case "oldest":
+        sorted.sort((a, b) => a.week_start.localeCompare(b.week_start) ||
+          a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" }));
+        break;
+      case "hours_desc":
+        sorted.sort((a, b) => b.totalHours - a.totalHours);
+        break;
+      case "hours_asc":
+        sorted.sort((a, b) => a.totalHours - b.totalHours);
+        break;
+      case "job_az":
+        sorted.sort((a, b) => a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" }) ||
+          b.week_start.localeCompare(a.week_start));
+        break;
+      default: // newest
+        sorted.sort((a, b) => b.week_start.localeCompare(a.week_start) ||
+          a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" }));
+    }
+    return sorted;
+  }, [groups, view, search, jobFilter, rangeBounds, sortBy, profiles]);
+
+  const hasActiveFilters = search !== "" || jobFilter !== "all" || rangeFilter !== "all" || sortBy !== "newest";
+  const clearFilters = () => {
+    setSearch(""); setJobFilter("all"); setRangeFilter("all"); setSortBy("newest");
+  };
+
+  // Jobs that actually appear in groups — keeps dropdown short and relevant.
+  const jobsInGroups = useMemo(() => {
+    const ids = new Set(groups.map((g) => g.job.id));
+    return jobs
+      .filter((j) => ids.has(j.id))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+  }, [groups, jobs]);
 
   const toggleExpand = (key: string) => {
     setExpanded((prev) => {
