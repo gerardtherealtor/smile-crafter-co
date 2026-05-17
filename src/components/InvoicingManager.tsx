@@ -556,12 +556,12 @@ export const InvoicingManager = ({
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="font-display tracking-wider"
+              className="font-display tracking-wider sm:col-span-2 lg:col-span-1 justify-center"
             >
               <X className="h-4 w-4" />
               Clear
             </Button>
-          ) : <div />}
+          ) : <div className="hidden lg:block" />}
         </div>
 
         <div className="flex items-center justify-between text-xs text-muted-foreground">
