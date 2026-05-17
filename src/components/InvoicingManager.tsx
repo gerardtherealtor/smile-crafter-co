@@ -262,19 +262,74 @@ export const InvoicingManager = ({
     ];
   };
 
+  // Preview state — opened before download so admin can verify QBO column mapping.
+  const [preview, setPreview] = useState<{
+    filename: string;
+    rows: (string | number)[][];
+    label: string;
+  } | null>(null);
+
   const exportOne = (g: JobWeekGroup) => {
-    const rows = [QBO_HEADERS, groupToRow(g)];
-    const fname = `qbo-invoice-${g.job.name.replace(/[^A-Za-z0-9]+/g, "_")}-${g.week_start}.csv`;
-    downloadCsv(fname, rows);
-    toast.success("CSV downloaded");
+    setPreview({
+      filename: `qbo-invoice-${g.job.name.replace(/[^A-Za-z0-9]+/g, "_")}-${g.week_start}.csv`,
+      rows: [QBO_HEADERS, groupToRow(g)],
+      label: `${g.job.name} · week of ${formatDate(g.week_start)}`,
+    });
   };
 
   const exportAllOpen = () => {
     const open = groups.filter((g) => !g.invoice && g.entries.length > 0);
     if (open.length === 0) { toast.info("No open job-weeks to export"); return; }
-    const rows: (string | number)[][] = [QBO_HEADERS, ...open.map(groupToRow)];
-    downloadCsv(`qbo-invoices-open-${new Date().toISOString().slice(0, 10)}.csv`, rows);
-    toast.success(`Exported ${open.length} invoice${open.length === 1 ? "" : "s"}`);
+    setPreview({
+      filename: `qbo-invoices-open-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows: [QBO_HEADERS, ...open.map(groupToRow)],
+      label: `${open.length} open job-week${open.length === 1 ? "" : "s"}`,
+    });
+  };
+
+  // QBO column requirements — must be present on every data row.
+  const REQUIRED_COLS = ["InvoiceNo", "Customer", "InvoiceDate", "Item(Product/Service)", "ItemQuantity"];
+  const previewValidation = useMemo(() => {
+    if (!preview) return { issues: [] as string[], ok: true };
+    const issues: string[] = [];
+    const header = preview.rows[0] as string[];
+    for (let i = 0; i < QBO_HEADERS.length; i++) {
+      if (header[i] !== QBO_HEADERS[i]) {
+        issues.push(`Header column ${i + 1} should be "${QBO_HEADERS[i]}" but is "${header[i] ?? "(missing)"}"`);
+      }
+    }
+    const qIdx = header.indexOf("ItemQuantity");
+    const dIdx = header.indexOf("InvoiceDate");
+    const requiredIdx = REQUIRED_COLS.map((c) => header.indexOf(c));
+    for (let r = 1; r < preview.rows.length; r++) {
+      const row = preview.rows[r];
+      REQUIRED_COLS.forEach((col, i) => {
+        const idx = requiredIdx[i];
+        if (idx < 0) return;
+        if (!String(row[idx] ?? "").trim()) issues.push(`Row ${r}: missing required "${col}"`);
+      });
+      if (qIdx >= 0) {
+        const q = Number(row[qIdx]);
+        if (!Number.isFinite(q) || q <= 0) {
+          issues.push(`Row ${r}: ItemQuantity "${row[qIdx]}" is not a positive number`);
+        }
+      }
+      if (dIdx >= 0) {
+        const d = String(row[dIdx] ?? "");
+        if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+          issues.push(`Row ${r}: InvoiceDate "${d}" is not YYYY-MM-DD`);
+        }
+      }
+    }
+    return { issues, ok: issues.length === 0 };
+  }, [preview]);
+
+  const confirmDownload = () => {
+    if (!preview) return;
+    downloadCsv(preview.filename, preview.rows);
+    const count = preview.rows.length - 1;
+    toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} to CSV`);
+    setPreview(null);
   };
 
   return (
