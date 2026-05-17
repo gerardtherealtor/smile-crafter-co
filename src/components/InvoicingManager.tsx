@@ -369,12 +369,17 @@ export const InvoicingManager = ({
   };
 
   const exportFiltered = () => {
-    const target = filtered.filter((g) => g.entries.length > 0);
-    if (target.length === 0) { toast.info("No job-weeks match your current filters"); return; }
+    let target = filtered.filter((g) => g.entries.length > 0);
+    if (exportMode === "open") {
+      target = target.filter((g) => !g.invoice);
+    } else {
+      target = target.filter((g) => !!g.invoice);
+    }
+    if (target.length === 0) { toast.info(`No ${exportMode} job-weeks match your current filters`); return; }
     setPreview({
-      filename: `qbo-invoices-${new Date().toISOString().slice(0, 10)}.csv`,
+      filename: `qbo-invoices-${exportMode}-${new Date().toISOString().slice(0, 10)}.csv`,
       rows: [QBO_HEADERS, ...target.map(groupToRow)],
-      label: `${target.length} job-week${target.length === 1 ? "" : "s"} (filtered)`,
+      label: `${target.length} ${exportMode} job-week${target.length === 1 ? "" : "s"} (filtered)`,
     });
   };
 
