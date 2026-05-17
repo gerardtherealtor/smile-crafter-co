@@ -453,22 +453,22 @@ export const InvoicingManager = ({
 
       <div className="space-y-3">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
-            <TabsList>
-              <TabsTrigger value="open" className="font-display tracking-wider">
+          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)} className="w-full lg:w-auto">
+            <TabsList className="grid w-full grid-cols-3 lg:flex lg:w-auto">
+              <TabsTrigger value="open" className="font-display tracking-wider text-xs sm:text-sm">
                 Open ({groups.filter((g) => !g.invoice).length})
               </TabsTrigger>
-              <TabsTrigger value="archived" className="font-display tracking-wider">
+              <TabsTrigger value="archived" className="font-display tracking-wider text-xs sm:text-sm">
                 Archived ({groups.filter((g) => g.invoice).length})
               </TabsTrigger>
-              <TabsTrigger value="all" className="font-display tracking-wider">
+              <TabsTrigger value="all" className="font-display tracking-wider text-xs sm:text-sm">
                 All ({groups.length})
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <div className="flex items-center gap-2 self-start lg:self-auto">
+          <div className="flex items-stretch gap-2 w-full lg:w-auto">
             <Select value={exportMode} onValueChange={(v) => setExportMode(v as "open" | "invoiced")}>
-              <SelectTrigger className="w-[140px] h-9 text-xs font-display tracking-wider">
+              <SelectTrigger className="flex-1 lg:w-[140px] lg:flex-none h-9 text-xs font-display tracking-wider">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -482,20 +482,21 @@ export const InvoicingManager = ({
               size="sm"
               onClick={exportFiltered}
               disabled={isExporting}
-              className="font-display tracking-wider"
+              className="font-display tracking-wider flex-1 lg:flex-none whitespace-nowrap"
             >
               {isExporting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Download className="h-4 w-4" />
               )}
-              {isExporting ? "Building…" : "Export to QuickBooks"}
+              <span className="hidden sm:inline">{isExporting ? "Building…" : "Export to QuickBooks"}</span>
+              <span className="sm:hidden">{isExporting ? "Building…" : "Export"}</span>
             </Button>
           </div>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_180px_180px_180px_auto]">
-          <div className="relative">
+        <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_180px_180px_180px_auto]">
+          <div className="relative sm:col-span-2 lg:col-span-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search job, address, worker, or note"
@@ -555,12 +556,12 @@ export const InvoicingManager = ({
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="font-display tracking-wider"
+              className="font-display tracking-wider sm:col-span-2 lg:col-span-1 justify-center"
             >
               <X className="h-4 w-4" />
               Clear
             </Button>
-          ) : <div />}
+          ) : <div className="hidden lg:block" />}
         </div>
 
         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -624,7 +625,7 @@ export const InvoicingManager = ({
                 invoiced ? "border-border bg-muted/30" : "border-border bg-card"
               }`}
             >
-              <div className="flex items-start gap-3 p-4">
+              <div className="flex items-start gap-3 p-3 sm:p-4">
                 <div className="pt-1">
                   <Checkbox
                     checked={invoiced}
@@ -634,26 +635,26 @@ export const InvoicingManager = ({
                 </div>
                 <button
                   onClick={() => toggleExpand(g.key)}
-                  className="flex-1 text-left"
+                  className="flex-1 text-left min-w-0"
                 >
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div>
-                      <div className="font-display text-lg uppercase tracking-wide">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-display text-base sm:text-lg uppercase tracking-wide break-words">
                         {g.job.name}
                       </div>
                       {g.job.address && (
-                        <div className="text-xs text-muted-foreground">{g.job.address}</div>
+                        <div className="text-xs text-muted-foreground break-words">{g.job.address}</div>
                       )}
                       <div className="text-xs text-muted-foreground mt-1">
                         Week of {formatDate(g.week_start)} – {formatDate(g.week_end)}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-right">
+                    <div className="flex items-center gap-3 sm:gap-4 text-right shrink-0">
                       <div>
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
                           Hours
                         </div>
-                        <div className="font-display text-2xl">{formatHours(g.totalHours)}</div>
+                        <div className="font-display text-xl sm:text-2xl">{formatHours(g.totalHours)}</div>
                       </div>
                       <div className="hidden sm:block">
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -756,14 +757,14 @@ export const InvoicingManager = ({
       </div>
 
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-5xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="font-display tracking-wider">
+            <DialogTitle className="font-display tracking-wider text-base sm:text-lg">
               CSV Preview — QuickBooks Online
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm break-words">
               {preview?.label} · {preview ? preview.rows.length - 1 : 0} invoice row(s) ·{" "}
-              <span className="font-mono">{preview?.filename}</span>
+              <span className="font-mono break-all">{preview?.filename}</span>
             </DialogDescription>
           </DialogHeader>
 
@@ -802,7 +803,7 @@ export const InvoicingManager = ({
                 </div>
               </div>
 
-              <ScrollArea className="h-[420px] w-full rounded-lg border border-border">
+              <ScrollArea className="h-[50vh] sm:h-[420px] w-full rounded-lg border border-border">
                 <table className="w-full text-xs">
                   <thead className="bg-muted sticky top-0">
                     <tr>
@@ -838,14 +839,14 @@ export const InvoicingManager = ({
             </div>
           )}
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPreview(null)}>
+          <DialogFooter className="gap-2 flex-col-reverse sm:flex-row">
+            <Button variant="outline" onClick={() => setPreview(null)} className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
               onClick={confirmDownload}
               disabled={!previewValidation.ok}
-              className="font-display tracking-wider"
+              className="font-display tracking-wider w-full sm:w-auto"
             >
               <Download className="h-4 w-4" />
               Download CSV
