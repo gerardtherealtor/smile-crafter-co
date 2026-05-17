@@ -99,9 +99,12 @@ export const InvoicingManager = ({
   const [entries, setEntries] = useState<TEntry[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"open" | "archived">("open");
+  const [view, setView] = useState<"open" | "archived" | "all">("open");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [jobFilter, setJobFilter] = useState<string>("all");
+  const [rangeFilter, setRangeFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("newest");
 
   const load = async () => {
     setLoading(true);
