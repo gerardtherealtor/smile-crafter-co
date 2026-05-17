@@ -11,8 +11,9 @@ import {
 import {
   formatDate, formatHours, formatTime12, splitOvertime, weekEnd, weekStart,
 } from "@/lib/time";
-import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Trash2, Users } from "lucide-react";
+import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Receipt, Trash2, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InvoicingManager } from "@/components/InvoicingManager";
 
 interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean }
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
@@ -123,6 +124,7 @@ const AdminPortal = () => {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="mb-6 flex-wrap h-auto">
           <TabsTrigger value="week" className="font-display tracking-wider"><Users className="h-4 w-4 mr-1.5" />Crew Week</TabsTrigger>
+          <TabsTrigger value="invoicing" className="font-display tracking-wider"><Receipt className="h-4 w-4 mr-1.5" />Invoicing</TabsTrigger>
           <TabsTrigger value="roster" className="font-display tracking-wider"><ClipboardList className="h-4 w-4 mr-1.5" />Roster</TabsTrigger>
           <TabsTrigger value="jobs" className="font-display tracking-wider"><Briefcase className="h-4 w-4 mr-1.5" />Jobs</TabsTrigger>
           <TabsTrigger value="reports" className="font-display tracking-wider"><FileDown className="h-4 w-4 mr-1.5" />Reports</TabsTrigger>
@@ -177,6 +179,10 @@ const AdminPortal = () => {
               </Table>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="invoicing">
+          <InvoicingManager jobs={jobs} profiles={profiles} />
         </TabsContent>
 
         <TabsContent value="roster">

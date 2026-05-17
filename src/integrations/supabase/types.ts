@@ -101,6 +101,42 @@ export type Database = {
         }
         Relationships: []
       }
+      job_invoices: {
+        Row: {
+          created_at: string
+          id: string
+          invoiced_at: string
+          invoiced_by: string | null
+          job_id: string
+          notes: string | null
+          updated_at: string
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invoiced_at?: string
+          invoiced_by?: string | null
+          job_id: string
+          notes?: string | null
+          updated_at?: string
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invoiced_at?: string
+          invoiced_by?: string | null
+          job_id?: string
+          notes?: string | null
+          updated_at?: string
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       jobs: {
         Row: {
           address: string | null
