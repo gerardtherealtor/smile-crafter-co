@@ -8,7 +8,41 @@ import { toast } from "sonner";
 import {
   formatDate, formatHours, formatTime12, weekEnd, weekStart,
 } from "@/lib/time";
-import { ChevronDown, ChevronRight, FileCheck2, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, FileCheck2, Search } from "lucide-react";
+
+// Build a QuickBooks Online Invoice Import CSV.
+// Headers match QBO's Invoice import format (Settings → Import data → Invoices).
+const QBO_HEADERS = [
+  "InvoiceNo",
+  "Customer",
+  "InvoiceDate",
+  "DueDate",
+  "Terms",
+  "Item(Product/Service)",
+  "ItemDescription",
+  "ItemQuantity",
+  "ItemRate",
+  "ItemAmount",
+  "Memo",
+];
+
+const csvEscape = (v: string | number) => {
+  const s = String(v ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+const downloadCsv = (filename: string, rows: (string | number)[][]) => {
+  const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
 interface Profile { id: string; full_name: string; email: string }
