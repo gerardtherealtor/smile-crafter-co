@@ -427,37 +427,116 @@ export const InvoicingManager = ({
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <Tabs value={view} onValueChange={(v) => setView(v as "open" | "archived")}>
-          <TabsList>
-            <TabsTrigger value="open" className="font-display tracking-wider">
-              Open ({groups.filter((g) => !g.invoice).length})
-            </TabsTrigger>
-            <TabsTrigger value="archived" className="font-display tracking-wider">
-              Archived ({groups.filter((g) => g.invoice).length})
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+      <div className="space-y-3">
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
+            <TabsList>
+              <TabsTrigger value="open" className="font-display tracking-wider">
+                Open ({groups.filter((g) => !g.invoice).length})
+              </TabsTrigger>
+              <TabsTrigger value="archived" className="font-display tracking-wider">
+                Archived ({groups.filter((g) => g.invoice).length})
+              </TabsTrigger>
+              <TabsTrigger value="all" className="font-display tracking-wider">
+                All ({groups.length})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={exportAllOpen}
-            className="font-display tracking-wider"
+            className="font-display tracking-wider self-start lg:self-auto"
           >
             <Download className="h-4 w-4" />
             Export all open to QuickBooks
           </Button>
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_180px_180px_180px_auto]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Search job or address"
+              placeholder="Search job, address, worker, or note"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              className="pl-9 pr-9"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 hover:bg-muted"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            )}
           </div>
+
+          <Select value={jobFilter} onValueChange={setJobFilter}>
+            <SelectTrigger><SelectValue placeholder="Job" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All jobs</SelectItem>
+              {jobsInGroups.map((j) => (
+                <SelectItem key={j.id} value={j.id}>{j.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={rangeFilter} onValueChange={setRangeFilter}>
+            <SelectTrigger><SelectValue placeholder="Date range" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All time</SelectItem>
+              <SelectItem value="this_week">This week</SelectItem>
+              <SelectItem value="last_week">Last week</SelectItem>
+              <SelectItem value="last_4">Last 4 weeks</SelectItem>
+              <SelectItem value="last_12">Last 12 weeks</SelectItem>
+              <SelectItem value="this_month">This month</SelectItem>
+              <SelectItem value="last_month">Last month</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger><SelectValue placeholder="Sort" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest week first</SelectItem>
+              <SelectItem value="oldest">Oldest week first</SelectItem>
+              <SelectItem value="hours_desc">Most hours</SelectItem>
+              <SelectItem value="hours_asc">Fewest hours</SelectItem>
+              <SelectItem value="job_az">Job name A→Z</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="font-display tracking-wider"
+            >
+              <X className="h-4 w-4" />
+              Clear
+            </Button>
+          ) : <div />}
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            Showing <span className="font-semibold text-foreground">{filtered.length}</span> of{" "}
+            {groups.filter((g) =>
+              view === "open" ? !g.invoice : view === "archived" ? !!g.invoice : true
+            ).length} job-week{filtered.length === 1 ? "" : "s"}
+          </span>
+          {filtered.length > 0 && (
+            <span>
+              Total: <span className="font-semibold text-foreground">
+                {formatHours(filtered.reduce((s, g) => s + g.totalHours, 0))}
+              </span> hr
+            </span>
+          )}
         </div>
       </div>
 
@@ -467,8 +546,19 @@ export const InvoicingManager = ({
             Loading…
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
-            {view === "open" ? "Nothing waiting to be invoiced." : "No archived invoices yet."}
+          <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground space-y-3">
+            <div>
+              {hasActiveFilters
+                ? "No job-weeks match these filters."
+                : view === "open" ? "Nothing waiting to be invoiced."
+                : view === "archived" ? "No archived invoices yet."
+                : "No job-weeks yet."}
+            </div>
+            {hasActiveFilters && (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4" /> Clear filters
+              </Button>
+            )}
           </div>
         ) : filtered.map((g) => {
           const isOpen = expanded.has(g.key);
