@@ -5,6 +5,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,7 +15,7 @@ import { toast } from "sonner";
 import {
   formatDate, formatHours, formatTime12, weekEnd, weekStart,
 } from "@/lib/time";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download, FileCheck2, Search } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download, FileCheck2, Search, X } from "lucide-react";
 
 // Build a QuickBooks Online Invoice Import CSV.
 // Headers match QBO's Invoice import format (Settings → Import data → Invoices).
