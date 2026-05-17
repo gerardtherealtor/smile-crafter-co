@@ -358,13 +358,13 @@ export const InvoicingManager = ({
     });
   };
 
-  const exportAllOpen = () => {
-    const open = groups.filter((g) => !g.invoice && g.entries.length > 0);
-    if (open.length === 0) { toast.info("No open job-weeks to export"); return; }
+  const exportFiltered = () => {
+    const target = filtered.filter((g) => g.entries.length > 0);
+    if (target.length === 0) { toast.info("No job-weeks match your current filters"); return; }
     setPreview({
-      filename: `qbo-invoices-open-${new Date().toISOString().slice(0, 10)}.csv`,
-      rows: [QBO_HEADERS, ...open.map(groupToRow)],
-      label: `${open.length} open job-week${open.length === 1 ? "" : "s"}`,
+      filename: `qbo-invoices-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows: [QBO_HEADERS, ...target.map(groupToRow)],
+      label: `${target.length} job-week${target.length === 1 ? "" : "s"} (filtered)`,
     });
   };
 
@@ -446,11 +446,11 @@ export const InvoicingManager = ({
             type="button"
             variant="outline"
             size="sm"
-            onClick={exportAllOpen}
+            onClick={exportFiltered}
             className="font-display tracking-wider self-start lg:self-auto"
           >
             <Download className="h-4 w-4" />
-            Export all open to QuickBooks
+            Export filtered to QuickBooks
           </Button>
         </div>
 
