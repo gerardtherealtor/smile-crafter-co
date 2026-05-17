@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   formatDate, formatHours, formatTime12, weekEnd, weekStart,
 } from "@/lib/time";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download, FileCheck2, Search, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download, FileCheck2, Loader2, Search, X } from "lucide-react";
 
 // Build a QuickBooks Online Invoice Import CSV.
 // Headers match QBO's Invoice import format (Settings → Import data → Invoices).
@@ -106,6 +106,7 @@ export const InvoicingManager = ({
   const [rangeFilter, setRangeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [exportMode, setExportMode] = useState<"open" | "invoiced">("open");
+  const [isExporting, setIsExporting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -369,17 +370,25 @@ export const InvoicingManager = ({
   };
 
   const exportFiltered = () => {
-    let target = filtered.filter((g) => g.entries.length > 0);
-    if (exportMode === "open") {
-      target = target.filter((g) => !g.invoice);
-    } else {
-      target = target.filter((g) => !!g.invoice);
-    }
-    if (target.length === 0) { toast.info(`No ${exportMode} job-weeks match your current filters`); return; }
-    setPreview({
-      filename: `qbo-invoices-${exportMode}-${new Date().toISOString().slice(0, 10)}.csv`,
-      rows: [QBO_HEADERS, ...target.map(groupToRow)],
-      label: `${target.length} ${exportMode} job-week${target.length === 1 ? "" : "s"} (filtered)`,
+    setIsExporting(true);
+    requestAnimationFrame(() => {
+      let target = filtered.filter((g) => g.entries.length > 0);
+      if (exportMode === "open") {
+        target = target.filter((g) => !g.invoice);
+      } else {
+        target = target.filter((g) => !!g.invoice);
+      }
+      if (target.length === 0) {
+        toast.info(`No ${exportMode} job-weeks match your current filters`);
+        setIsExporting(false);
+        return;
+      }
+      setPreview({
+        filename: `qbo-invoices-${exportMode}-${new Date().toISOString().slice(0, 10)}.csv`,
+        rows: [QBO_HEADERS, ...target.map(groupToRow)],
+        label: `${target.length} ${exportMode} job-week${target.length === 1 ? "" : "s"} (filtered)`,
+      });
+      setIsExporting(false);
     });
   };
 
@@ -472,10 +481,15 @@ export const InvoicingManager = ({
               variant="outline"
               size="sm"
               onClick={exportFiltered}
+              disabled={isExporting}
               className="font-display tracking-wider"
             >
-              <Download className="h-4 w-4" />
-              Export to QuickBooks
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {isExporting ? "Building…" : "Export to QuickBooks"}
             </Button>
           </div>
         </div>
