@@ -294,7 +294,16 @@ export const InvoicingManager = ({
         week_end: g.week_end,
         invoiced_by: user.user?.id ?? null,
       });
-      if (error) { toast.error(error.message); return; }
+      if (error) {
+        const isDuplicate = error.code === "23505" || /duplicate key/i.test(error.message);
+        if (isDuplicate) {
+          toast.info(`${g.job.name} is already invoiced for this week`);
+        } else {
+          toast.error(error.message);
+        }
+        await load();
+        return;
+      }
       toast.success(`${g.job.name} marked invoiced`);
     } else {
       if (!g.invoice) return;
