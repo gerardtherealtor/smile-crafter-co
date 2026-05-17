@@ -481,10 +481,15 @@ export const InvoicingManager = ({
               variant="outline"
               size="sm"
               onClick={exportFiltered}
+              disabled={isExporting}
               className="font-display tracking-wider"
             >
-              <Download className="h-4 w-4" />
-              Export to QuickBooks
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {isExporting ? "Building…" : "Export to QuickBooks"}
             </Button>
           </div>
         </div>
