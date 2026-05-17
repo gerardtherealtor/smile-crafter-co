@@ -105,6 +105,7 @@ export const InvoicingManager = ({
   const [jobFilter, setJobFilter] = useState<string>("all");
   const [rangeFilter, setRangeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [exportMode, setExportMode] = useState<"open" | "invoiced">("open");
 
   const load = async () => {
     setLoading(true);
