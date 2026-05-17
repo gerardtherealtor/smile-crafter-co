@@ -5,6 +5,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,7 +15,7 @@ import { toast } from "sonner";
 import {
   formatDate, formatHours, formatTime12, weekEnd, weekStart,
 } from "@/lib/time";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download, FileCheck2, Search } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download, FileCheck2, Search, X } from "lucide-react";
 
 // Build a QuickBooks Online Invoice Import CSV.
 // Headers match QBO's Invoice import format (Settings → Import data → Invoices).
@@ -96,9 +99,12 @@ export const InvoicingManager = ({
   const [entries, setEntries] = useState<TEntry[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"open" | "archived">("open");
+  const [view, setView] = useState<"open" | "archived" | "all">("open");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [jobFilter, setJobFilter] = useState<string>("all");
+  const [rangeFilter, setRangeFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("newest");
 
   const load = async () => {
     setLoading(true);
@@ -182,19 +188,94 @@ export const InvoicingManager = ({
     });
   }, [entries, invoices, jobs]);
 
+  // Date-range presets (compared against week_start).
+  const rangeBounds = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startOfThisWeek = new Date(weekStart(today));
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const minus = (d: Date, days: number) => {
+      const n = new Date(d); n.setDate(n.getDate() - days); return n;
+    };
+    switch (rangeFilter) {
+      case "this_week":
+        return { from: iso(startOfThisWeek), to: null as string | null };
+      case "last_week": {
+        const last = minus(startOfThisWeek, 7);
+        return { from: iso(last), to: iso(minus(startOfThisWeek, 1)) };
+      }
+      case "last_4":
+        return { from: iso(minus(startOfThisWeek, 21)), to: null };
+      case "last_12":
+        return { from: iso(minus(startOfThisWeek, 77)), to: null };
+      case "this_month": {
+        const first = new Date(today.getFullYear(), today.getMonth(), 1);
+        return { from: iso(first), to: null };
+      }
+      case "last_month": {
+        const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const last = new Date(today.getFullYear(), today.getMonth(), 0);
+        return { from: iso(first), to: iso(last) };
+      }
+      default:
+        return { from: null, to: null };
+    }
+  }, [rangeFilter]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return groups.filter((g) => {
+    const result = groups.filter((g) => {
       const isInvoiced = !!g.invoice;
       if (view === "open" && isInvoiced) return false;
       if (view === "archived" && !isInvoiced) return false;
-      if (!q) return true;
-      return (
-        g.job.name.toLowerCase().includes(q) ||
-        (g.job.address ?? "").toLowerCase().includes(q)
-      );
+      if (jobFilter !== "all" && g.job.id !== jobFilter) return false;
+      if (rangeBounds.from && g.week_start < rangeBounds.from) return false;
+      if (rangeBounds.to && g.week_start > rangeBounds.to) return false;
+      if (q) {
+        const hay =
+          `${g.job.name} ${g.job.address ?? ""}`.toLowerCase() + " " +
+          Array.from(g.workerIds).map((id) => profileName(id)).join(" ").toLowerCase() + " " +
+          g.entries.map((e) => e.notes ?? "").join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
     });
-  }, [groups, view, search]);
+
+    const sorted = [...result];
+    switch (sortBy) {
+      case "oldest":
+        sorted.sort((a, b) => a.week_start.localeCompare(b.week_start) ||
+          a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" }));
+        break;
+      case "hours_desc":
+        sorted.sort((a, b) => b.totalHours - a.totalHours);
+        break;
+      case "hours_asc":
+        sorted.sort((a, b) => a.totalHours - b.totalHours);
+        break;
+      case "job_az":
+        sorted.sort((a, b) => a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" }) ||
+          b.week_start.localeCompare(a.week_start));
+        break;
+      default: // newest
+        sorted.sort((a, b) => b.week_start.localeCompare(a.week_start) ||
+          a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" }));
+    }
+    return sorted;
+  }, [groups, view, search, jobFilter, rangeBounds, sortBy, profiles]);
+
+  const hasActiveFilters = search !== "" || jobFilter !== "all" || rangeFilter !== "all" || sortBy !== "newest";
+  const clearFilters = () => {
+    setSearch(""); setJobFilter("all"); setRangeFilter("all"); setSortBy("newest");
+  };
+
+  // Jobs that actually appear in groups — keeps dropdown short and relevant.
+  const jobsInGroups = useMemo(() => {
+    const ids = new Set(groups.map((g) => g.job.id));
+    return jobs
+      .filter((j) => ids.has(j.id))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+  }, [groups, jobs]);
 
   const toggleExpand = (key: string) => {
     setExpanded((prev) => {
@@ -346,37 +427,116 @@ export const InvoicingManager = ({
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <Tabs value={view} onValueChange={(v) => setView(v as "open" | "archived")}>
-          <TabsList>
-            <TabsTrigger value="open" className="font-display tracking-wider">
-              Open ({groups.filter((g) => !g.invoice).length})
-            </TabsTrigger>
-            <TabsTrigger value="archived" className="font-display tracking-wider">
-              Archived ({groups.filter((g) => g.invoice).length})
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+      <div className="space-y-3">
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
+            <TabsList>
+              <TabsTrigger value="open" className="font-display tracking-wider">
+                Open ({groups.filter((g) => !g.invoice).length})
+              </TabsTrigger>
+              <TabsTrigger value="archived" className="font-display tracking-wider">
+                Archived ({groups.filter((g) => g.invoice).length})
+              </TabsTrigger>
+              <TabsTrigger value="all" className="font-display tracking-wider">
+                All ({groups.length})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={exportAllOpen}
-            className="font-display tracking-wider"
+            className="font-display tracking-wider self-start lg:self-auto"
           >
             <Download className="h-4 w-4" />
             Export all open to QuickBooks
           </Button>
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_180px_180px_180px_auto]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Search job or address"
+              placeholder="Search job, address, worker, or note"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              className="pl-9 pr-9"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 hover:bg-muted"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            )}
           </div>
+
+          <Select value={jobFilter} onValueChange={setJobFilter}>
+            <SelectTrigger><SelectValue placeholder="Job" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All jobs</SelectItem>
+              {jobsInGroups.map((j) => (
+                <SelectItem key={j.id} value={j.id}>{j.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={rangeFilter} onValueChange={setRangeFilter}>
+            <SelectTrigger><SelectValue placeholder="Date range" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All time</SelectItem>
+              <SelectItem value="this_week">This week</SelectItem>
+              <SelectItem value="last_week">Last week</SelectItem>
+              <SelectItem value="last_4">Last 4 weeks</SelectItem>
+              <SelectItem value="last_12">Last 12 weeks</SelectItem>
+              <SelectItem value="this_month">This month</SelectItem>
+              <SelectItem value="last_month">Last month</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger><SelectValue placeholder="Sort" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest week first</SelectItem>
+              <SelectItem value="oldest">Oldest week first</SelectItem>
+              <SelectItem value="hours_desc">Most hours</SelectItem>
+              <SelectItem value="hours_asc">Fewest hours</SelectItem>
+              <SelectItem value="job_az">Job name A→Z</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="font-display tracking-wider"
+            >
+              <X className="h-4 w-4" />
+              Clear
+            </Button>
+          ) : <div />}
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            Showing <span className="font-semibold text-foreground">{filtered.length}</span> of{" "}
+            {groups.filter((g) =>
+              view === "open" ? !g.invoice : view === "archived" ? !!g.invoice : true
+            ).length} job-week{filtered.length === 1 ? "" : "s"}
+          </span>
+          {filtered.length > 0 && (
+            <span>
+              Total: <span className="font-semibold text-foreground">
+                {formatHours(filtered.reduce((s, g) => s + g.totalHours, 0))}
+              </span> hr
+            </span>
+          )}
         </div>
       </div>
 
@@ -386,8 +546,19 @@ export const InvoicingManager = ({
             Loading…
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
-            {view === "open" ? "Nothing waiting to be invoiced." : "No archived invoices yet."}
+          <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground space-y-3">
+            <div>
+              {hasActiveFilters
+                ? "No job-weeks match these filters."
+                : view === "open" ? "Nothing waiting to be invoiced."
+                : view === "archived" ? "No archived invoices yet."
+                : "No job-weeks yet."}
+            </div>
+            {hasActiveFilters && (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4" /> Clear filters
+              </Button>
+            )}
           </div>
         ) : filtered.map((g) => {
           const isOpen = expanded.has(g.key);
