@@ -165,7 +165,7 @@ export const InvoicingManager = ({
       week_end: g.weekEnd,
       actor_id: actorId,
       actor_email: actorEmail,
-      details: details ?? null,
+      details: (details ?? null) as never,
     }));
     const { error } = await supabase.from("invoice_audit_log").insert(rows);
     if (error) console.warn("audit log insert failed", error);
