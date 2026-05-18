@@ -824,6 +824,13 @@ export const InvoicingManager = ({
                       Archived {new Date(g.invoice!.invoiced_at).toLocaleDateString()}
                     </div>
                   )}
+                  {g.invoice && g.invoice.csv_export_count > 0 && (
+                    <div className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-destructive ml-0 sm:ml-3">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      CSV already exported {g.invoice.csv_export_count}×
+                      {g.invoice.csv_exported_at && ` · last ${new Date(g.invoice.csv_exported_at).toLocaleDateString()}`}
+                    </div>
+                  )}
                 </button>
               </div>
 
