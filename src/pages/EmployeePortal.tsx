@@ -41,7 +41,7 @@ const EmployeePortal = () => {
 
   type Shift = { clockIn: string; clockOut: string; jobId: string; notes: string };
   const [shifts, setShifts] = useState<Shift[]>([
-    { clockIn: "07:00", clockOut: "16:00", jobId: "", notes: "" },
+    { clockIn: "", clockOut: "", jobId: "", notes: "" },
   ]);
 
   const updateShift = (i: number, patch: Partial<Shift>) =>
