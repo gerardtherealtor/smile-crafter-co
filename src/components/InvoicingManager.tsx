@@ -643,6 +643,22 @@ export const InvoicingManager = ({
       );
     }
 
+    // Log CSV download for every invoice row in the export.
+    const exportedGroups = preview.exportedInvoiceIds
+      .map((id) => invoices.find((i) => i.id === id))
+      .filter(Boolean)
+      .map((inv) => ({
+        invoiceId: inv!.id,
+        jobId: inv!.job_id,
+        weekStart: inv!.week_start,
+        weekEnd: inv!.week_end,
+      }));
+    await logAudit("csv_downloaded", exportedGroups, {
+      filename: finalName,
+      batch_name: batchName,
+      row_count: count,
+    });
+
     if (preview.archiveAfter && archiveOnDownload) {
       const { error } = await supabase
         .from("job_invoices")
@@ -651,6 +667,17 @@ export const InvoicingManager = ({
       if (error) {
         toast.error(`CSV downloaded, but archiving failed: ${error.message}`);
       } else {
+        await logAudit(
+          "archived_on_download",
+          preview.archiveAfter.invoiceIds
+            .map((id) => invoices.find((i) => i.id === id))
+            .filter(Boolean)
+            .map((inv) => ({
+              invoiceId: inv!.id, jobId: inv!.job_id,
+              weekStart: inv!.week_start, weekEnd: inv!.week_end,
+            })),
+          { filename: finalName },
+        );
         toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} and archived ${preview.archiveAfter.groupCount}`);
         setSelected(new Set());
       }
