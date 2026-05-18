@@ -1047,11 +1047,12 @@ export const InvoicingManager = ({
             </Button>
             <Button
               onClick={confirmDownload}
-              disabled={!previewValidation.ok}
+              disabled={!previewValidation.ok || downloadBlocked}
+              variant={hasDuplicates ? "destructive" : "default"}
               className="font-display tracking-wider w-full sm:w-auto"
             >
               <Download className="h-4 w-4" />
-              Download CSV
+              {hasDuplicates ? "Re-export CSV" : "Download CSV"}
             </Button>
           </DialogFooter>
         </DialogContent>
