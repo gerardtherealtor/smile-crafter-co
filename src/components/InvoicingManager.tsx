@@ -756,12 +756,24 @@ export const InvoicingManager = ({
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-card p-4 shadow-deep space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Three-stage invoicing so nothing gets missed or double-billed:
-          <span className="font-semibold"> Open</span> →
-          <span className="font-semibold"> Ready for Invoicing</span> →
-          <span className="font-semibold"> Archived</span>.
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Three-stage invoicing so nothing gets missed or double-billed:
+            <span className="font-semibold"> Open</span> →
+            <span className="font-semibold"> Ready for Invoicing</span> →
+            <span className="font-semibold"> Archived</span>.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={openAuditLog}
+            className="font-display tracking-wider shrink-0"
+          >
+            <History className="h-4 w-4" />
+            Audit log
+          </Button>
+        </div>
         <p className="text-xs text-muted-foreground">
           Select the job-weeks you want, then use the action bar to move them through each stage.
           In QuickBooks Online: <span className="italic">Settings → Import data → Invoices</span>, upload the CSV, map the columns, then review &amp; import.
