@@ -104,7 +104,7 @@ export const InvoicingManager = ({
         .order("work_date", { ascending: false }),
       supabase
         .from("job_invoices")
-        .select("id,job_id,week_start,week_end,invoiced_at,notes,status")
+        .select("id,job_id,week_start,week_end,invoiced_at,notes,status,csv_exported_at,csv_export_count")
         .order("week_start", { ascending: false }),
     ]);
     if (e.data) setEntries(e.data as TEntry[]);
