@@ -36,7 +36,13 @@ const AuthPage = () => {
   const [bioSupported, setBioSupported] = useState(false);
   const [bioChecking, setBioChecking] = useState(true);
   const [bioAuthenticating, setBioAuthenticating] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(() => {
+    try {
+      return localStorage.getItem("dnc_ephemeral") !== "1";
+    } catch {
+      return true;
+    }
+  });
 
   // Friendly label for the platform's biometric method.
   const bioLabel = (() => {
