@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -15,22 +15,16 @@ import { toast } from "sonner";
 import {
   formatDate, formatHours, formatTime12, weekEnd, weekStart,
 } from "@/lib/time";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download, FileCheck2, Loader2, Search, X } from "lucide-react";
+import {
+  AlertTriangle, Archive, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight,
+  Download, FileCheck2, Loader2, Search, Send, Undo2, X,
+} from "lucide-react";
 
-// Build a QuickBooks Online Invoice Import CSV.
-// Headers match QBO's Invoice import format (Settings → Import data → Invoices).
+// QuickBooks Online Invoice Import CSV headers.
 const QBO_HEADERS = [
-  "InvoiceNo",
-  "Customer",
-  "InvoiceDate",
-  "DueDate",
-  "Terms",
-  "Item(Product/Service)",
-  "ItemDescription",
-  "ItemQuantity",
-  "ItemRate",
-  "ItemAmount",
-  "Memo",
+  "InvoiceNo", "Customer", "InvoiceDate", "DueDate", "Terms",
+  "Item(Product/Service)", "ItemDescription", "ItemQuantity", "ItemRate",
+  "ItemAmount", "Memo",
 ];
 
 const csvEscape = (v: string | number) => {
@@ -54,23 +48,15 @@ const downloadCsv = (filename: string, rows: (string | number)[][]) => {
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
 interface Profile { id: string; full_name: string; email: string }
 interface TEntry {
-  id: string;
-  user_id: string;
-  job_id: string | null;
-  work_date: string;
-  clock_in: string;
-  clock_out: string;
-  hours: number;
-  notes: string | null;
+  id: string; user_id: string; job_id: string | null; work_date: string;
+  clock_in: string; clock_out: string; hours: number; notes: string | null;
 }
 interface InvoiceRecord {
-  id: string;
-  job_id: string;
-  week_start: string;
-  week_end: string;
-  invoiced_at: string;
-  notes: string | null;
+  id: string; job_id: string; week_start: string; week_end: string;
+  invoiced_at: string; notes: string | null; status: "ready" | "archived";
 }
+
+type Stage = "open" | "ready" | "archived";
 
 interface JobWeekGroup {
   key: string;
@@ -81,9 +67,9 @@ interface JobWeekGroup {
   totalHours: number;
   workerIds: Set<string>;
   invoice?: InvoiceRecord;
+  stage: Stage;
 }
 
-// Compute the Monday for any given ISO date.
 const mondayFor = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
   return weekStart(new Date(y, m - 1, d));
@@ -99,14 +85,14 @@ export const InvoicingManager = ({
   const [entries, setEntries] = useState<TEntry[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"open" | "archived" | "all">("open");
+  const [view, setView] = useState<Stage>("open");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [jobFilter, setJobFilter] = useState<string>("all");
   const [rangeFilter, setRangeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
-  const [exportMode, setExportMode] = useState<"open" | "invoiced">("open");
-  const [isExporting, setIsExporting] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -117,7 +103,7 @@ export const InvoicingManager = ({
         .order("work_date", { ascending: false }),
       supabase
         .from("job_invoices")
-        .select("id,job_id,week_start,week_end,invoiced_at,notes")
+        .select("id,job_id,week_start,week_end,invoiced_at,notes,status")
         .order("week_start", { ascending: false }),
     ]);
     if (e.data) setEntries(e.data as TEntry[]);
@@ -127,14 +113,17 @@ export const InvoicingManager = ({
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
 
+  // Clear selection when switching tabs to avoid cross-stage confusion.
+  useEffect(() => { setSelected(new Set()); }, [view]);
+
   const profileName = (id: string) =>
     profiles.find((p) => p.id === id)?.full_name ||
     profiles.find((p) => p.id === id)?.email ||
     "Unknown";
 
-  // Group time entries by (job_id, week_start)
+  // Group time entries by (job_id, week_start) and attach invoice records.
   const groups = useMemo<JobWeekGroup[]>(() => {
-    const map = new Map<string, JobWeekGroup>();
+    const map = new Map<string, Omit<JobWeekGroup, "stage">>();
 
     for (const e of entries) {
       if (!e.job_id) continue;
@@ -146,13 +135,8 @@ export const InvoicingManager = ({
       let g = map.get(key);
       if (!g) {
         g = {
-          key,
-          job,
-          week_start: wkStart,
-          week_end: wkEnd,
-          entries: [],
-          totalHours: 0,
-          workerIds: new Set(),
+          key, job, week_start: wkStart, week_end: wkEnd,
+          entries: [], totalHours: 0, workerIds: new Set(),
         };
         map.set(key, g);
       }
@@ -161,36 +145,38 @@ export const InvoicingManager = ({
       g.workerIds.add(e.user_id);
     }
 
-    // Attach invoice records
     for (const inv of invoices) {
       const key = `${inv.job_id}__${inv.week_start}`;
       const g = map.get(key);
       if (g) {
         g.invoice = inv;
       } else {
-        // Invoice exists with no current entries — still surface in archived view
         const job = jobs.find((j) => j.id === inv.job_id);
         if (!job) continue;
         map.set(key, {
-          key,
-          job,
-          week_start: inv.week_start,
-          week_end: inv.week_end,
-          entries: [],
-          totalHours: 0,
-          workerIds: new Set(),
-          invoice: inv,
+          key, job, week_start: inv.week_start, week_end: inv.week_end,
+          entries: [], totalHours: 0, workerIds: new Set(), invoice: inv,
         });
       }
     }
 
-    return Array.from(map.values()).sort((a, b) => {
+    const withStage: JobWeekGroup[] = Array.from(map.values()).map((g) => ({
+      ...g,
+      stage: !g.invoice ? "open" : g.invoice.status,
+    }));
+
+    return withStage.sort((a, b) => {
       if (a.week_start !== b.week_start) return b.week_start.localeCompare(a.week_start);
       return a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" });
     });
   }, [entries, invoices, jobs]);
 
-  // Date-range presets (compared against week_start).
+  const stageCounts = useMemo(() => ({
+    open: groups.filter((g) => g.stage === "open").length,
+    ready: groups.filter((g) => g.stage === "ready").length,
+    archived: groups.filter((g) => g.stage === "archived").length,
+  }), [groups]);
+
   const rangeBounds = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -200,16 +186,13 @@ export const InvoicingManager = ({
       const n = new Date(d); n.setDate(n.getDate() - days); return n;
     };
     switch (rangeFilter) {
-      case "this_week":
-        return { from: iso(startOfThisWeek), to: null as string | null };
+      case "this_week": return { from: iso(startOfThisWeek), to: null as string | null };
       case "last_week": {
         const last = minus(startOfThisWeek, 7);
         return { from: iso(last), to: iso(minus(startOfThisWeek, 1)) };
       }
-      case "last_4":
-        return { from: iso(minus(startOfThisWeek, 21)), to: null };
-      case "last_12":
-        return { from: iso(minus(startOfThisWeek, 77)), to: null };
+      case "last_4": return { from: iso(minus(startOfThisWeek, 21)), to: null };
+      case "last_12": return { from: iso(minus(startOfThisWeek, 77)), to: null };
       case "this_month": {
         const first = new Date(today.getFullYear(), today.getMonth(), 1);
         return { from: iso(first), to: null };
@@ -219,17 +202,14 @@ export const InvoicingManager = ({
         const last = new Date(today.getFullYear(), today.getMonth(), 0);
         return { from: iso(first), to: iso(last) };
       }
-      default:
-        return { from: null, to: null };
+      default: return { from: null, to: null };
     }
   }, [rangeFilter]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const result = groups.filter((g) => {
-      const isInvoiced = !!g.invoice;
-      if (view === "open" && isInvoiced) return false;
-      if (view === "archived" && !isInvoiced) return false;
+      if (g.stage !== view) return false;
       if (jobFilter !== "all" && g.job.id !== jobFilter) return false;
       if (rangeBounds.from && g.week_start < rangeBounds.from) return false;
       if (rangeBounds.to && g.week_start > rangeBounds.to) return false;
@@ -250,16 +230,14 @@ export const InvoicingManager = ({
           a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" }));
         break;
       case "hours_desc":
-        sorted.sort((a, b) => b.totalHours - a.totalHours);
-        break;
+        sorted.sort((a, b) => b.totalHours - a.totalHours); break;
       case "hours_asc":
-        sorted.sort((a, b) => a.totalHours - b.totalHours);
-        break;
+        sorted.sort((a, b) => a.totalHours - b.totalHours); break;
       case "job_az":
         sorted.sort((a, b) => a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" }) ||
           b.week_start.localeCompare(a.week_start));
         break;
-      default: // newest
+      default:
         sorted.sort((a, b) => b.week_start.localeCompare(a.week_start) ||
           a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" }));
     }
@@ -271,7 +249,6 @@ export const InvoicingManager = ({
     setSearch(""); setJobFilter("all"); setRangeFilter("all"); setSortBy("newest");
   };
 
-  // Jobs that actually appear in groups — keeps dropdown short and relevant.
   const jobsInGroups = useMemo(() => {
     const ids = new Set(groups.map((g) => g.job.id));
     return jobs
@@ -287,36 +264,109 @@ export const InvoicingManager = ({
     });
   };
 
-  const markInvoiced = async (g: JobWeekGroup, checked: boolean) => {
-    if (checked) {
-      const { data: user } = await supabase.auth.getUser();
-      const { error } = await supabase.from("job_invoices").insert({
-        job_id: g.job.id,
-        week_start: g.week_start,
-        week_end: g.week_end,
-        invoiced_by: user.user?.id ?? null,
-      });
-      if (error) {
-        const isDuplicate = error.code === "23505" || /duplicate key/i.test(error.message);
-        if (isDuplicate) {
-          toast.info(`${g.job.name} is already invoiced for this week`);
-        } else {
-          toast.error(error.message);
-        }
-        await load();
-        return;
+  const toggleSelect = (key: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const allVisibleSelected = filtered.length > 0 && filtered.every((g) => selected.has(g.key));
+  const someVisibleSelected = filtered.some((g) => selected.has(g.key));
+  const toggleSelectAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        for (const g of filtered) next.delete(g.key);
+      } else {
+        for (const g of filtered) next.add(g.key);
       }
-      toast.success(`${g.job.name} marked invoiced`);
-    } else {
-      if (!g.invoice) return;
-      const { error } = await supabase.from("job_invoices").delete().eq("id", g.invoice.id);
-      if (error) { toast.error(error.message); return; }
-      toast.success(`${g.job.name} restored to open`);
+      return next;
+    });
+  };
+
+  const selectedGroups = useMemo(
+    () => filtered.filter((g) => selected.has(g.key)),
+    [filtered, selected],
+  );
+
+  // ---- Stage transitions ----
+
+  // Open → Ready: create invoice rows with status='ready'.
+  const sendSelectedToReady = async () => {
+    const target = selectedGroups.filter((g) => g.stage === "open" && g.entries.length > 0);
+    if (target.length === 0) {
+      toast.info("Select at least one open job-week with logged hours");
+      return;
     }
+    setBusy(true);
+    const { data: user } = await supabase.auth.getUser();
+    const rows = target.map((g) => ({
+      job_id: g.job.id,
+      week_start: g.week_start,
+      week_end: g.week_end,
+      invoiced_by: user.user?.id ?? null,
+      status: "ready" as const,
+    }));
+    const { error } = await supabase.from("job_invoices").insert(rows);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Sent ${target.length} job-week${target.length === 1 ? "" : "s"} to Ready for Invoicing`);
+    setSelected(new Set());
     load();
   };
 
-  // Build a description block summarizing the week's work for this job.
+  // Ready → Archived
+  const archiveSelected = async () => {
+    const target = selectedGroups.filter((g) => g.stage === "ready" && g.invoice);
+    if (target.length === 0) { toast.info("Select at least one ready job-week"); return; }
+    setBusy(true);
+    const ids = target.map((g) => g.invoice!.id);
+    const { error } = await supabase
+      .from("job_invoices")
+      .update({ status: "archived", invoiced_at: new Date().toISOString() })
+      .in("id", ids);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Archived ${target.length} job-week${target.length === 1 ? "" : "s"}`);
+    setSelected(new Set());
+    load();
+  };
+
+  // Ready → Open (undo)
+  const sendReadyBackToOpen = async () => {
+    const target = selectedGroups.filter((g) => g.stage === "ready" && g.invoice);
+    if (target.length === 0) { toast.info("Select at least one ready job-week"); return; }
+    setBusy(true);
+    const ids = target.map((g) => g.invoice!.id);
+    const { error } = await supabase.from("job_invoices").delete().in("id", ids);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Moved ${target.length} back to Open`);
+    setSelected(new Set());
+    load();
+  };
+
+  // Archived → Ready (restore)
+  const restoreArchivedToReady = async () => {
+    const target = selectedGroups.filter((g) => g.stage === "archived" && g.invoice);
+    if (target.length === 0) { toast.info("Select at least one archived job-week"); return; }
+    setBusy(true);
+    const ids = target.map((g) => g.invoice!.id);
+    const { error } = await supabase
+      .from("job_invoices")
+      .update({ status: "ready" })
+      .in("id", ids);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Restored ${target.length} to Ready for Invoicing`);
+    setSelected(new Set());
+    load();
+  };
+
+  // ---- CSV building ----
+
   const buildDescription = (g: JobWeekGroup) => {
     if (g.entries.length === 0) return `${g.job.name} — week of ${formatDate(g.week_start)}`;
     const byDate = new Map<string, TEntry[]>();
@@ -340,17 +390,9 @@ export const InvoicingManager = ({
   const groupToRow = (g: JobWeekGroup): (string | number)[] => {
     const invNo = `${g.job.name.replace(/[^A-Za-z0-9]+/g, "").slice(0, 10)}-${g.week_start.replace(/-/g, "").slice(2)}`;
     return [
-      invNo,                                  // InvoiceNo
-      g.job.name,                             // Customer (map to QBO customer)
-      g.week_end,                             // InvoiceDate (end of week)
-      "",                                     // DueDate (fill in QBO)
-      "",                                     // Terms
-      "Labor",                                // Item
-      buildDescription(g),                    // ItemDescription
-      g.totalHours.toFixed(2),                // ItemQuantity
-      "",                                     // ItemRate (fill in QBO)
-      "",                                     // ItemAmount (QBO computes)
-      `Week ${formatDate(g.week_start)} – ${formatDate(g.week_end)}${g.job.address ? ` · ${g.job.address}` : ""}`, // Memo
+      invNo, g.job.name, g.week_end, "", "",
+      "Labor", buildDescription(g), g.totalHours.toFixed(2), "", "",
+      `Week ${formatDate(g.week_start)} – ${formatDate(g.week_end)}${g.job.address ? ` · ${g.job.address}` : ""}`,
     ];
   };
 
@@ -359,40 +401,39 @@ export const InvoicingManager = ({
     filename: string;
     rows: (string | number)[][];
     label: string;
+    archiveAfter: { invoiceIds: string[]; groupCount: number } | null;
   } | null>(null);
 
+  // Create CSV from selected READY job-weeks (with option to archive on download).
+  const exportSelectedReady = () => {
+    const target = selectedGroups.filter((g) => g.stage === "ready" && g.entries.length > 0);
+    if (target.length === 0) {
+      toast.info("Select at least one ready job-week with logged hours");
+      return;
+    }
+    setPreview({
+      filename: `qbo-invoices-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows: [QBO_HEADERS, ...target.map(groupToRow)],
+      label: `${target.length} ready job-week${target.length === 1 ? "" : "s"}`,
+      archiveAfter: {
+        invoiceIds: target.map((g) => g.invoice!.id),
+        groupCount: target.length,
+      },
+    });
+  };
+
+  // Single-row export from expanded card (works in any tab).
   const exportOne = (g: JobWeekGroup) => {
     setPreview({
       filename: `qbo-invoice-${g.job.name.replace(/[^A-Za-z0-9]+/g, "_")}-${g.week_start}.csv`,
       rows: [QBO_HEADERS, groupToRow(g)],
       label: `${g.job.name} · week of ${formatDate(g.week_start)}`,
+      archiveAfter: g.stage === "ready" && g.invoice
+        ? { invoiceIds: [g.invoice.id], groupCount: 1 }
+        : null,
     });
   };
 
-  const exportFiltered = () => {
-    setIsExporting(true);
-    requestAnimationFrame(() => {
-      let target = filtered.filter((g) => g.entries.length > 0);
-      if (exportMode === "open") {
-        target = target.filter((g) => !g.invoice);
-      } else {
-        target = target.filter((g) => !!g.invoice);
-      }
-      if (target.length === 0) {
-        toast.info(`No ${exportMode} job-weeks match your current filters`);
-        setIsExporting(false);
-        return;
-      }
-      setPreview({
-        filename: `qbo-invoices-${exportMode}-${new Date().toISOString().slice(0, 10)}.csv`,
-        rows: [QBO_HEADERS, ...target.map(groupToRow)],
-        label: `${target.length} ${exportMode} job-week${target.length === 1 ? "" : "s"} (filtered)`,
-      });
-      setIsExporting(false);
-    });
-  };
-
-  // QBO column requirements — must be present on every data row.
   const REQUIRED_COLS = ["InvoiceNo", "Customer", "InvoiceDate", "Item(Product/Service)", "ItemQuantity"];
   const previewValidation = useMemo(() => {
     if (!preview) return { issues: [] as string[], ok: true };
@@ -429,72 +470,111 @@ export const InvoicingManager = ({
     return { issues, ok: issues.length === 0 };
   }, [preview]);
 
-  const confirmDownload = () => {
+  const [archiveOnDownload, setArchiveOnDownload] = useState(true);
+  useEffect(() => { setArchiveOnDownload(true); }, [preview]);
+
+  const confirmDownload = async () => {
     if (!preview) return;
     downloadCsv(preview.filename, preview.rows);
     const count = preview.rows.length - 1;
-    toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} to CSV`);
+
+    if (preview.archiveAfter && archiveOnDownload) {
+      const { error } = await supabase
+        .from("job_invoices")
+        .update({ status: "archived", invoiced_at: new Date().toISOString() })
+        .in("id", preview.archiveAfter.invoiceIds);
+      if (error) {
+        toast.error(`CSV downloaded, but archiving failed: ${error.message}`);
+      } else {
+        toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} and archived ${preview.archiveAfter.groupCount}`);
+        setSelected(new Set());
+        load();
+      }
+    } else {
+      toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} to CSV`);
+    }
     setPreview(null);
+  };
+
+  // ---- Per-tab bulk action bar ----
+
+  const BulkBar = () => {
+    if (selected.size === 0) return null;
+    return (
+      <div className="sticky top-2 z-10 rounded-xl border border-primary/40 bg-card/95 backdrop-blur p-3 shadow-deep flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-2 text-sm">
+          <CheckCircle2 className="h-4 w-4 text-primary" />
+          <span>
+            <span className="font-semibold">{selected.size}</span> selected
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            className="text-xs text-muted-foreground underline-offset-4 hover:underline ml-1"
+          >
+            clear
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:ml-auto">
+          {view === "open" && (
+            <Button size="sm" onClick={sendSelectedToReady} disabled={busy} className="font-display tracking-wider">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Send to Ready for Invoicing
+            </Button>
+          )}
+          {view === "ready" && (
+            <>
+              <Button size="sm" onClick={exportSelectedReady} disabled={busy} className="font-display tracking-wider">
+                <Download className="h-4 w-4" /> Create CSV from selected
+              </Button>
+              <Button size="sm" variant="outline" onClick={archiveSelected} disabled={busy} className="font-display tracking-wider">
+                <Archive className="h-4 w-4" /> Archive selected
+              </Button>
+              <Button size="sm" variant="ghost" onClick={sendReadyBackToOpen} disabled={busy} className="font-display tracking-wider">
+                <ArrowLeft className="h-4 w-4" /> Back to Open
+              </Button>
+            </>
+          )}
+          {view === "archived" && (
+            <Button size="sm" variant="outline" onClick={restoreArchivedToReady} disabled={busy} className="font-display tracking-wider">
+              <Undo2 className="h-4 w-4" /> Restore to Ready
+            </Button>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-card p-4 shadow-deep space-y-2">
         <p className="text-sm text-muted-foreground">
-          Every job site with logged hours is grouped by week. Check off the box once you've created the
-          invoice in QuickBooks — it'll move to <span className="font-semibold">Archived</span>.
+          Three-stage invoicing so nothing gets missed or double-billed:
+          <span className="font-semibold"> Open</span> →
+          <span className="font-semibold"> Ready for Invoicing</span> →
+          <span className="font-semibold"> Archived</span>.
         </p>
         <p className="text-xs text-muted-foreground">
-          Use <span className="font-semibold">Export to QuickBooks</span> to download a CSV in QBO's
-          Invoice import format. In QuickBooks Online: <span className="italic">Settings → Import data → Invoices</span>,
-          upload the file, map the columns, then review & import. Rate/Due Date can be filled in QBO.
+          Select the job-weeks you want, then use the action bar to move them through each stage.
+          In QuickBooks Online: <span className="italic">Settings → Import data → Invoices</span>, upload the CSV, map the columns, then review &amp; import.
         </p>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)} className="w-full lg:w-auto">
-            <TabsList className="grid w-full grid-cols-3 lg:flex lg:w-auto">
-              <TabsTrigger value="open" className="font-display tracking-wider text-xs sm:text-sm">
-                Open ({groups.filter((g) => !g.invoice).length})
-              </TabsTrigger>
-              <TabsTrigger value="archived" className="font-display tracking-wider text-xs sm:text-sm">
-                Archived ({groups.filter((g) => g.invoice).length})
-              </TabsTrigger>
-              <TabsTrigger value="all" className="font-display tracking-wider text-xs sm:text-sm">
-                All ({groups.length})
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="flex items-stretch gap-2 w-full lg:w-auto">
-            <Select value={exportMode} onValueChange={(v) => setExportMode(v as "open" | "invoiced")}>
-              <SelectTrigger className="flex-1 lg:w-[140px] lg:flex-none h-9 text-xs font-display tracking-wider">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="open">Open only</SelectItem>
-                <SelectItem value="invoiced">Invoiced only</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={exportFiltered}
-              disabled={isExporting}
-              className="font-display tracking-wider flex-1 lg:flex-none whitespace-nowrap"
-            >
-              {isExporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              <span className="hidden sm:inline">{isExporting ? "Building…" : "Export to QuickBooks"}</span>
-              <span className="sm:hidden">{isExporting ? "Building…" : "Export"}</span>
-            </Button>
-          </div>
-        </div>
+      <Tabs value={view} onValueChange={(v) => setView(v as Stage)}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="open" className="font-display tracking-wider text-xs sm:text-sm">
+            Open ({stageCounts.open})
+          </TabsTrigger>
+          <TabsTrigger value="ready" className="font-display tracking-wider text-xs sm:text-sm">
+            Ready ({stageCounts.ready})
+          </TabsTrigger>
+          <TabsTrigger value="archived" className="font-display tracking-wider text-xs sm:text-sm">
+            Archived ({stageCounts.archived})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
+      <div className="space-y-3">
         <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_180px_180px_180px_auto]">
           <div className="relative sm:col-span-2 lg:col-span-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -564,13 +644,26 @@ export const InvoicingManager = ({
           ) : <div className="hidden lg:block" />}
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Showing <span className="font-semibold text-foreground">{filtered.length}</span> of{" "}
-            {groups.filter((g) =>
-              view === "open" ? !g.invoice : view === "archived" ? !!g.invoice : true
-            ).length} job-week{filtered.length === 1 ? "" : "s"}
-          </span>
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            {filtered.length > 0 && (
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs hover:bg-muted"
+              >
+                <Checkbox
+                  checked={allVisibleSelected ? true : (someVisibleSelected ? "indeterminate" : false)}
+                  className="pointer-events-none"
+                />
+                <span>{allVisibleSelected ? "Unselect all" : "Select all visible"}</span>
+              </button>
+            )}
+            <span>
+              Showing <span className="font-semibold text-foreground">{filtered.length}</span> of{" "}
+              {stageCounts[view]} job-week{filtered.length === 1 ? "" : "s"}
+            </span>
+          </div>
           {filtered.length > 0 && (
             <span>
               Total: <span className="font-semibold text-foreground">
@@ -580,6 +673,8 @@ export const InvoicingManager = ({
           )}
         </div>
       </div>
+
+      <BulkBar />
 
       <div className="space-y-3">
         {loading ? (
@@ -592,8 +687,8 @@ export const InvoicingManager = ({
               {hasActiveFilters
                 ? "No job-weeks match these filters."
                 : view === "open" ? "Nothing waiting to be invoiced."
-                : view === "archived" ? "No archived invoices yet."
-                : "No job-weeks yet."}
+                : view === "ready" ? "Nothing queued for invoicing yet. Send open job-weeks here when you're ready to bill."
+                : "No archived invoices yet."}
             </div>
             {hasActiveFilters && (
               <Button variant="outline" size="sm" onClick={clearFilters}>
@@ -603,13 +698,11 @@ export const InvoicingManager = ({
           </div>
         ) : filtered.map((g) => {
           const isOpen = expanded.has(g.key);
-          const invoiced = !!g.invoice;
-          // Per-employee totals within this group
+          const isSelected = selected.has(g.key);
           const perEmp = new Map<string, number>();
           for (const e of g.entries) {
             perEmp.set(e.user_id, (perEmp.get(e.user_id) ?? 0) + Number(e.hours));
           }
-          // Entries by date
           const byDate = new Map<string, TEntry[]>();
           for (const e of g.entries) {
             const arr = byDate.get(e.work_date) ?? [];
@@ -621,16 +714,19 @@ export const InvoicingManager = ({
           return (
             <div
               key={g.key}
-              className={`rounded-xl border shadow-deep overflow-hidden ${
-                invoiced ? "border-border bg-muted/30" : "border-border bg-card"
+              className={`rounded-xl border shadow-deep overflow-hidden transition-colors ${
+                isSelected ? "border-primary/60 bg-primary/5"
+                : g.stage === "archived" ? "border-border bg-muted/30"
+                : g.stage === "ready" ? "border-border bg-card"
+                : "border-border bg-card"
               }`}
             >
               <div className="flex items-start gap-3 p-3 sm:p-4">
                 <div className="pt-1">
                   <Checkbox
-                    checked={invoiced}
-                    onCheckedChange={(c) => markInvoiced(g, !!c)}
-                    aria-label="Mark invoiced"
+                    checked={isSelected}
+                    onCheckedChange={() => toggleSelect(g.key)}
+                    aria-label="Select"
                   />
                 </div>
                 <button
@@ -669,10 +765,16 @@ export const InvoicingManager = ({
                       )}
                     </div>
                   </div>
-                  {invoiced && (
+                  {g.stage === "ready" && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary">
+                      <Send className="h-3.5 w-3.5" />
+                      Ready for invoicing
+                    </div>
+                  )}
+                  {g.stage === "archived" && (
                     <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-maple">
                       <FileCheck2 className="h-3.5 w-3.5" />
-                      Invoiced {new Date(g.invoice!.invoiced_at).toLocaleDateString()}
+                      Archived {new Date(g.invoice!.invoiced_at).toLocaleDateString()}
                     </div>
                   )}
                 </button>
@@ -690,7 +792,7 @@ export const InvoicingManager = ({
                         className="font-display tracking-wider"
                       >
                         <Download className="h-4 w-4" />
-                        Export to QuickBooks
+                        Export this one to QuickBooks
                       </Button>
                     </div>
                   )}
@@ -802,6 +904,19 @@ export const InvoicingManager = ({
                   )}
                 </div>
               </div>
+
+              {preview.archiveAfter && (
+                <label className="flex items-center gap-2 rounded-lg border border-border bg-card p-3 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={archiveOnDownload}
+                    onCheckedChange={(c) => setArchiveOnDownload(!!c)}
+                  />
+                  <span>
+                    Move {preview.archiveAfter.groupCount} job-week{preview.archiveAfter.groupCount === 1 ? "" : "s"} to{" "}
+                    <span className="font-semibold">Archived</span> after download
+                  </span>
+                </label>
+              )}
 
               <ScrollArea className="h-[50vh] sm:h-[420px] w-full rounded-lg border border-border">
                 <table className="w-full text-xs">
