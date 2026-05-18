@@ -959,6 +959,39 @@ export const InvoicingManager = ({
                 </div>
               </div>
 
+              {hasDuplicates && (
+                <div className="rounded-lg border-2 border-destructive bg-destructive/10 p-3 text-sm space-y-2">
+                  <div className="flex items-start gap-2 text-destructive font-semibold">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>
+                      Duplicate billing warning — {preview!.duplicates.length} job-week
+                      {preview!.duplicates.length === 1 ? " has" : "s have"} already had a CSV exported:
+                    </span>
+                  </div>
+                  <ul className="list-disc list-inside text-xs text-destructive/90 space-y-0.5 pl-1">
+                    {preview!.duplicates.slice(0, 6).map((d, i) => (
+                      <li key={i}>
+                        <span className="font-medium">{d.label}</span> — exported {d.count}× ·
+                        last {new Date(d.lastAt).toLocaleString()}
+                      </li>
+                    ))}
+                    {preview!.duplicates.length > 6 && (
+                      <li>…and {preview!.duplicates.length - 6} more</li>
+                    )}
+                  </ul>
+                  <label className="flex items-start gap-2 pt-1 cursor-pointer text-destructive">
+                    <Checkbox
+                      checked={confirmDuplicate}
+                      onCheckedChange={(c) => setConfirmDuplicate(!!c)}
+                      className="mt-0.5 border-destructive data-[state=checked]:bg-destructive"
+                    />
+                    <span className="text-xs font-medium">
+                      I understand this will re-bill the customer. Export anyway.
+                    </span>
+                  </label>
+                </div>
+              )}
+
               {preview.archiveAfter && (
                 <label className="flex items-center gap-2 rounded-lg border border-border bg-card p-3 text-sm cursor-pointer">
                   <Checkbox
