@@ -956,13 +956,49 @@ export const InvoicingManager = ({
               CSV Preview — QuickBooks Online
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm break-words">
-              {preview?.label} · {preview ? preview.rows.length - 1 : 0} invoice row(s) ·{" "}
-              <span className="font-mono break-all">{preview?.filename}</span>
+              {preview?.label}
             </DialogDescription>
           </DialogHeader>
 
           {preview && (
             <div className="space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Invoices</div>
+                  <div className="font-display text-2xl">{preview.totals.invoices}</div>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Line items</div>
+                  <div className="font-display text-2xl">{preview.totals.lines}</div>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total hours</div>
+                  <div className="font-display text-2xl">{formatHours(preview.totals.hours)}</div>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Jobs · Weeks</div>
+                  <div className="font-display text-2xl">
+                    {preview.totals.jobs}<span className="text-muted-foreground text-base"> · </span>{preview.totals.weeks}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                <label className="block">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+                    Batch name
+                  </div>
+                  <Input
+                    value={batchName}
+                    onChange={(e) => onBatchNameChange(e.target.value)}
+                    placeholder="QBO Invoice Batch — 2026-05-18"
+                    className="font-display tracking-wide"
+                  />
+                </label>
+                <div className="text-[11px] text-muted-foreground">
+                  Saved as <span className="font-mono break-all text-foreground">{filename || "qbo-invoices.csv"}</span>
+                </div>
+              </div>
               <div
                 className={`rounded-lg border p-3 text-sm flex items-start gap-2 ${
                   previewValidation.ok
