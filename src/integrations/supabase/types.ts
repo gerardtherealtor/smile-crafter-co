@@ -104,6 +104,8 @@ export type Database = {
       job_invoices: {
         Row: {
           created_at: string
+          csv_export_count: number
+          csv_exported_at: string | null
           id: string
           invoiced_at: string
           invoiced_by: string | null
@@ -116,6 +118,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          csv_export_count?: number
+          csv_exported_at?: string | null
           id?: string
           invoiced_at?: string
           invoiced_by?: string | null
@@ -128,6 +132,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          csv_export_count?: number
+          csv_exported_at?: string | null
           id?: string
           invoiced_at?: string
           invoiced_by?: string | null
