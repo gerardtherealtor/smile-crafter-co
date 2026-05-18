@@ -77,9 +77,7 @@ const EmployeePortal = () => {
       );
       setJobs(sorted);
       if (!defaultJobId && sorted.length) {
-        const firstId = sorted[0].id;
-        setDefaultJobId(firstId);
-        setShifts((prev) => prev.map((s) => (s.jobId ? s : { ...s, jobId: firstId })));
+        setDefaultJobId(sorted[0].id);
       }
     }
     if (entriesRes.data) setEntries(entriesRes.data as Entry[]);
