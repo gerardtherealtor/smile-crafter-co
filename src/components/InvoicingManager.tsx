@@ -364,9 +364,18 @@ export const InvoicingManager = ({
       invoiced_by: user.user?.id ?? null,
       status: "ready" as const,
     }));
-    const { error } = await supabase.from("job_invoices").insert(rows);
+    const { data: inserted, error } = await supabase
+      .from("job_invoices")
+      .insert(rows)
+      .select("id,job_id,week_start,week_end");
     setBusy(false);
     if (error) { toast.error(error.message); return; }
+    await logAudit(
+      "open_to_ready",
+      (inserted ?? []).map((r) => ({
+        invoiceId: r.id, jobId: r.job_id, weekStart: r.week_start, weekEnd: r.week_end,
+      })),
+    );
     toast.success(`Sent ${target.length} job-week${target.length === 1 ? "" : "s"} to Ready for Invoicing`);
     setSelected(new Set());
     load();
