@@ -147,6 +147,30 @@ export const InvoicingManager = ({
   // Clear selection when switching tabs to avoid cross-stage confusion.
   useEffect(() => { setSelected(new Set()); }, [view]);
 
+  // Append entries to the admin-only audit log. Best-effort: never block the UX.
+  const logAudit = async (
+    action: AuditAction,
+    groups: { invoiceId?: string | null; jobId: string; weekStart: string; weekEnd: string }[],
+    details?: Record<string, unknown>,
+  ) => {
+    if (groups.length === 0) return;
+    const { data: u } = await supabase.auth.getUser();
+    const actorId = u.user?.id ?? null;
+    const actorEmail = u.user?.email ?? null;
+    const rows = groups.map((g) => ({
+      action,
+      invoice_id: g.invoiceId ?? null,
+      job_id: g.jobId,
+      week_start: g.weekStart,
+      week_end: g.weekEnd,
+      actor_id: actorId,
+      actor_email: actorEmail,
+      details: details ?? null,
+    }));
+    const { error } = await supabase.from("invoice_audit_log").insert(rows);
+    if (error) console.warn("audit log insert failed", error);
+  };
+
   const profileName = (id: string) =>
     profiles.find((p) => p.id === id)?.full_name ||
     profiles.find((p) => p.id === id)?.email ||
