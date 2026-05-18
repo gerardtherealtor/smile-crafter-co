@@ -17,8 +17,38 @@ import {
 } from "@/lib/time";
 import {
   AlertTriangle, Archive, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight,
-  Download, FileCheck2, Loader2, Search, Send, Undo2, X,
+  Download, FileCheck2, History, Loader2, Search, Send, Undo2, X,
 } from "lucide-react";
+
+type AuditAction =
+  | "open_to_ready"
+  | "ready_to_archived"
+  | "ready_to_open"
+  | "archived_to_ready"
+  | "csv_downloaded"
+  | "archived_on_download";
+
+const AUDIT_LABELS: Record<AuditAction, string> = {
+  open_to_ready: "Sent to Ready for Invoicing",
+  ready_to_archived: "Archived",
+  ready_to_open: "Moved back to Open",
+  archived_to_ready: "Restored to Ready",
+  csv_downloaded: "Downloaded CSV",
+  archived_on_download: "Archived on download",
+};
+
+interface AuditRow {
+  id: string;
+  action: AuditAction;
+  invoice_id: string | null;
+  job_id: string | null;
+  week_start: string | null;
+  week_end: string | null;
+  actor_id: string | null;
+  actor_email: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
 
 // QuickBooks Online Invoice Import CSV headers.
 const QBO_HEADERS = [
