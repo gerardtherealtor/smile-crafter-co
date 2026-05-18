@@ -398,12 +398,25 @@ export const InvoicingManager = ({
   };
 
   // Preview state — opened before download so admin can verify QBO column mapping.
+  // `exportedInvoiceIds` are the job_invoices.id values to bump csv_export_count on.
+  // `duplicates` lists any selected job-weeks that have already been exported before.
   const [preview, setPreview] = useState<{
     filename: string;
     rows: (string | number)[][];
     label: string;
     archiveAfter: { invoiceIds: string[]; groupCount: number } | null;
+    exportedInvoiceIds: string[];
+    duplicates: { label: string; lastAt: string; count: number }[];
   } | null>(null);
+
+  const dupeInfo = (g: JobWeekGroup) =>
+    g.invoice && g.invoice.csv_export_count > 0
+      ? {
+          label: `${g.job.name} · week of ${formatDate(g.week_start)}`,
+          lastAt: g.invoice.csv_exported_at ?? g.invoice.invoiced_at,
+          count: g.invoice.csv_export_count,
+        }
+      : null;
 
   // Create CSV from selected READY job-weeks (with option to archive on download).
   const exportSelectedReady = () => {
@@ -412,6 +425,9 @@ export const InvoicingManager = ({
       toast.info("Select at least one ready job-week with logged hours");
       return;
     }
+    const duplicates = target.map(dupeInfo).filter(Boolean) as {
+      label: string; lastAt: string; count: number;
+    }[];
     setPreview({
       filename: `qbo-invoices-${new Date().toISOString().slice(0, 10)}.csv`,
       rows: [QBO_HEADERS, ...target.map(groupToRow)],
@@ -420,11 +436,14 @@ export const InvoicingManager = ({
         invoiceIds: target.map((g) => g.invoice!.id),
         groupCount: target.length,
       },
+      exportedInvoiceIds: target.map((g) => g.invoice!.id),
+      duplicates,
     });
   };
 
   // Single-row export from expanded card (works in any tab).
   const exportOne = (g: JobWeekGroup) => {
+    const dup = dupeInfo(g);
     setPreview({
       filename: `qbo-invoice-${g.job.name.replace(/[^A-Za-z0-9]+/g, "_")}-${g.week_start}.csv`,
       rows: [QBO_HEADERS, groupToRow(g)],
@@ -432,6 +451,8 @@ export const InvoicingManager = ({
       archiveAfter: g.stage === "ready" && g.invoice
         ? { invoiceIds: [g.invoice.id], groupCount: 1 }
         : null,
+      exportedInvoiceIds: g.invoice ? [g.invoice.id] : [],
+      duplicates: dup ? [dup] : [],
     });
   };
 
@@ -472,28 +493,53 @@ export const InvoicingManager = ({
   }, [preview]);
 
   const [archiveOnDownload, setArchiveOnDownload] = useState(true);
-  useEffect(() => { setArchiveOnDownload(true); }, [preview]);
+  const [confirmDuplicate, setConfirmDuplicate] = useState(false);
+  useEffect(() => { setArchiveOnDownload(true); setConfirmDuplicate(false); }, [preview]);
+
+  const hasDuplicates = (preview?.duplicates.length ?? 0) > 0;
+  const downloadBlocked = hasDuplicates && !confirmDuplicate;
 
   const confirmDownload = async () => {
     if (!preview) return;
+    if (downloadBlocked) {
+      toast.error("Confirm the duplicate-billing warning before downloading");
+      return;
+    }
     downloadCsv(preview.filename, preview.rows);
     const count = preview.rows.length - 1;
+    const nowIso = new Date().toISOString();
+
+    // Bump export count + timestamp on every invoice row included in this CSV.
+    if (preview.exportedInvoiceIds.length > 0) {
+      await Promise.all(
+        preview.exportedInvoiceIds.map(async (id) => {
+          const inv = invoices.find((i) => i.id === id);
+          await supabase
+            .from("job_invoices")
+            .update({
+              csv_exported_at: nowIso,
+              csv_export_count: (inv?.csv_export_count ?? 0) + 1,
+            })
+            .eq("id", id);
+        }),
+      );
+    }
 
     if (preview.archiveAfter && archiveOnDownload) {
       const { error } = await supabase
         .from("job_invoices")
-        .update({ status: "archived", invoiced_at: new Date().toISOString() })
+        .update({ status: "archived", invoiced_at: nowIso })
         .in("id", preview.archiveAfter.invoiceIds);
       if (error) {
         toast.error(`CSV downloaded, but archiving failed: ${error.message}`);
       } else {
         toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} and archived ${preview.archiveAfter.groupCount}`);
         setSelected(new Set());
-        load();
       }
     } else {
       toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} to CSV`);
     }
+    load();
     setPreview(null);
   };
 
