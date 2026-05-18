@@ -155,7 +155,7 @@ const EmployeePortal = () => {
           },
         },
       }).catch(() => {});
-      setShifts([{ clockIn: "07:00", clockOut: "16:00", jobId: defaultJobId, notes: "" }]);
+      setShifts([{ clockIn: "", clockOut: "", jobId: "", notes: "" }]);
       await loadData();
     }
   };
