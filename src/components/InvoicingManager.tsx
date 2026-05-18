@@ -1266,6 +1266,61 @@ export const InvoicingManager = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={auditOpen} onOpenChange={setAuditOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-display tracking-wider flex items-center gap-2">
+              <History className="h-5 w-5" /> Invoice audit log
+            </DialogTitle>
+            <DialogDescription>
+              Last 500 actions — who moved invoices between stages and when CSVs were downloaded. Admin-only.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-3">
+            {auditLoading ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Loading…
+              </div>
+            ) : auditRows.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                No audit entries yet.
+              </div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {auditRows.map((row) => {
+                  const job = jobs.find((j) => j.id === row.job_id);
+                  const filename =
+                    row.details && typeof (row.details as { filename?: unknown }).filename === "string"
+                      ? (row.details as { filename: string }).filename
+                      : null;
+                  return (
+                    <li key={row.id} className="py-3 text-sm flex flex-col gap-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold">{AUDIT_LABELS[row.action] ?? row.action}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(row.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {row.actor_email ?? row.actor_id ?? "Unknown user"}
+                        {job ? ` · ${job.name}` : row.job_id ? ` · job ${row.job_id.slice(0, 8)}` : ""}
+                        {row.week_start ? ` · week of ${formatDate(row.week_start)}` : ""}
+                        {filename ? ` · ${filename}` : ""}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAuditOpen(false)} className="w-full sm:w-auto">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
