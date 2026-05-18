@@ -41,7 +41,7 @@ const EmployeePortal = () => {
 
   type Shift = { clockIn: string; clockOut: string; jobId: string; notes: string };
   const [shifts, setShifts] = useState<Shift[]>([
-    { clockIn: "07:00", clockOut: "16:00", jobId: "", notes: "" },
+    { clockIn: "", clockOut: "", jobId: "", notes: "" },
   ]);
 
   const updateShift = (i: number, patch: Partial<Shift>) =>
@@ -50,7 +50,7 @@ const EmployeePortal = () => {
     setShifts((prev) =>
       prev.length >= 5
         ? prev
-        : [...prev, { clockIn: "", clockOut: "", jobId: defaultJobId, notes: "" }]
+        : [...prev, { clockIn: "", clockOut: "", jobId: "", notes: "" }]
     );
   const removeShift = (i: number) =>
     setShifts((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
@@ -77,9 +77,7 @@ const EmployeePortal = () => {
       );
       setJobs(sorted);
       if (!defaultJobId && sorted.length) {
-        const firstId = sorted[0].id;
-        setDefaultJobId(firstId);
-        setShifts((prev) => prev.map((s) => (s.jobId ? s : { ...s, jobId: firstId })));
+        setDefaultJobId(sorted[0].id);
       }
     }
     if (entriesRes.data) setEntries(entriesRes.data as Entry[]);
@@ -157,7 +155,7 @@ const EmployeePortal = () => {
           },
         },
       }).catch(() => {});
-      setShifts([{ clockIn: "07:00", clockOut: "16:00", jobId: defaultJobId, notes: "" }]);
+      setShifts([{ clockIn: "", clockOut: "", jobId: "", notes: "" }]);
       await loadData();
     }
   };
