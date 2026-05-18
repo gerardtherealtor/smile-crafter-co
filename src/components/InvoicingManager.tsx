@@ -54,6 +54,7 @@ interface TEntry {
 interface InvoiceRecord {
   id: string; job_id: string; week_start: string; week_end: string;
   invoiced_at: string; notes: string | null; status: "ready" | "archived";
+  csv_exported_at: string | null; csv_export_count: number;
 }
 
 type Stage = "open" | "ready" | "archived";
