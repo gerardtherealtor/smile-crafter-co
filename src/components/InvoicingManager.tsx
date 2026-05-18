@@ -413,6 +413,12 @@ export const InvoicingManager = ({
     const { error } = await supabase.from("job_invoices").delete().in("id", ids);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
+    await logAudit(
+      "ready_to_open",
+      target.map((g) => ({
+        invoiceId: g.invoice!.id, jobId: g.job.id, weekStart: g.week_start, weekEnd: g.week_end,
+      })),
+    );
     toast.success(`Moved ${target.length} back to Open`);
     setSelected(new Set());
     load();
