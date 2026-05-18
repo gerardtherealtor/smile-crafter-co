@@ -101,6 +101,45 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          invoice_id: string | null
+          job_id: string | null
+          week_end: string | null
+          week_start: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          invoice_id?: string | null
+          job_id?: string | null
+          week_end?: string | null
+          week_start?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          invoice_id?: string | null
+          job_id?: string | null
+          week_end?: string | null
+          week_start?: string | null
+        }
+        Relationships: []
+      }
       job_invoices: {
         Row: {
           created_at: string

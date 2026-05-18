@@ -17,8 +17,38 @@ import {
 } from "@/lib/time";
 import {
   AlertTriangle, Archive, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight,
-  Download, FileCheck2, Loader2, Search, Send, Undo2, X,
+  Download, FileCheck2, History, Loader2, Search, Send, Undo2, X,
 } from "lucide-react";
+
+type AuditAction =
+  | "open_to_ready"
+  | "ready_to_archived"
+  | "ready_to_open"
+  | "archived_to_ready"
+  | "csv_downloaded"
+  | "archived_on_download";
+
+const AUDIT_LABELS: Record<AuditAction, string> = {
+  open_to_ready: "Sent to Ready for Invoicing",
+  ready_to_archived: "Archived",
+  ready_to_open: "Moved back to Open",
+  archived_to_ready: "Restored to Ready",
+  csv_downloaded: "Downloaded CSV",
+  archived_on_download: "Archived on download",
+};
+
+interface AuditRow {
+  id: string;
+  action: AuditAction;
+  invoice_id: string | null;
+  job_id: string | null;
+  week_start: string | null;
+  week_end: string | null;
+  actor_id: string | null;
+  actor_email: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
 
 // QuickBooks Online Invoice Import CSV headers.
 const QBO_HEADERS = [
@@ -93,6 +123,22 @@ export const InvoicingManager = ({
   const [jobFilter, setJobFilter] = useState<string>("all");
   const [rangeFilter, setRangeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+
+  const openAuditLog = async () => {
+    setAuditOpen(true);
+    setAuditLoading(true);
+    const { data, error } = await supabase
+      .from("invoice_audit_log")
+      .select("id,action,invoice_id,job_id,week_start,week_end,actor_id,actor_email,details,created_at")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    setAuditLoading(false);
+    if (error) { toast.error(error.message); return; }
+    setAuditRows((data ?? []) as unknown as AuditRow[]);
+  };
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -116,6 +162,30 @@ export const InvoicingManager = ({
 
   // Clear selection when switching tabs to avoid cross-stage confusion.
   useEffect(() => { setSelected(new Set()); }, [view]);
+
+  // Append entries to the admin-only audit log. Best-effort: never block the UX.
+  const logAudit = async (
+    action: AuditAction,
+    groups: { invoiceId?: string | null; jobId: string; weekStart: string; weekEnd: string }[],
+    details?: Record<string, unknown>,
+  ) => {
+    if (groups.length === 0) return;
+    const { data: u } = await supabase.auth.getUser();
+    const actorId = u.user?.id ?? null;
+    const actorEmail = u.user?.email ?? null;
+    const rows = groups.map((g) => ({
+      action,
+      invoice_id: g.invoiceId ?? null,
+      job_id: g.jobId,
+      week_start: g.weekStart,
+      week_end: g.weekEnd,
+      actor_id: actorId,
+      actor_email: actorEmail,
+      details: (details ?? null) as never,
+    }));
+    const { error } = await supabase.from("invoice_audit_log").insert(rows);
+    if (error) console.warn("audit log insert failed", error);
+  };
 
   const profileName = (id: string) =>
     profiles.find((p) => p.id === id)?.full_name ||
@@ -310,9 +380,18 @@ export const InvoicingManager = ({
       invoiced_by: user.user?.id ?? null,
       status: "ready" as const,
     }));
-    const { error } = await supabase.from("job_invoices").insert(rows);
+    const { data: inserted, error } = await supabase
+      .from("job_invoices")
+      .insert(rows)
+      .select("id,job_id,week_start,week_end");
     setBusy(false);
     if (error) { toast.error(error.message); return; }
+    await logAudit(
+      "open_to_ready",
+      (inserted ?? []).map((r) => ({
+        invoiceId: r.id, jobId: r.job_id, weekStart: r.week_start, weekEnd: r.week_end,
+      })),
+    );
     toast.success(`Sent ${target.length} job-week${target.length === 1 ? "" : "s"} to Ready for Invoicing`);
     setSelected(new Set());
     load();
@@ -330,6 +409,12 @@ export const InvoicingManager = ({
       .in("id", ids);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
+    await logAudit(
+      "ready_to_archived",
+      target.map((g) => ({
+        invoiceId: g.invoice!.id, jobId: g.job.id, weekStart: g.week_start, weekEnd: g.week_end,
+      })),
+    );
     toast.success(`Archived ${target.length} job-week${target.length === 1 ? "" : "s"}`);
     setSelected(new Set());
     load();
@@ -344,6 +429,12 @@ export const InvoicingManager = ({
     const { error } = await supabase.from("job_invoices").delete().in("id", ids);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
+    await logAudit(
+      "ready_to_open",
+      target.map((g) => ({
+        invoiceId: g.invoice!.id, jobId: g.job.id, weekStart: g.week_start, weekEnd: g.week_end,
+      })),
+    );
     toast.success(`Moved ${target.length} back to Open`);
     setSelected(new Set());
     load();
@@ -361,6 +452,12 @@ export const InvoicingManager = ({
       .in("id", ids);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
+    await logAudit(
+      "archived_to_ready",
+      target.map((g) => ({
+        invoiceId: g.invoice!.id, jobId: g.job.id, weekStart: g.week_start, weekEnd: g.week_end,
+      })),
+    );
     toast.success(`Restored ${target.length} to Ready for Invoicing`);
     setSelected(new Set());
     load();
@@ -562,6 +659,22 @@ export const InvoicingManager = ({
       );
     }
 
+    // Log CSV download for every invoice row in the export.
+    const exportedGroups = preview.exportedInvoiceIds
+      .map((id) => invoices.find((i) => i.id === id))
+      .filter(Boolean)
+      .map((inv) => ({
+        invoiceId: inv!.id,
+        jobId: inv!.job_id,
+        weekStart: inv!.week_start,
+        weekEnd: inv!.week_end,
+      }));
+    await logAudit("csv_downloaded", exportedGroups, {
+      filename: finalName,
+      batch_name: batchName,
+      row_count: count,
+    });
+
     if (preview.archiveAfter && archiveOnDownload) {
       const { error } = await supabase
         .from("job_invoices")
@@ -570,6 +683,17 @@ export const InvoicingManager = ({
       if (error) {
         toast.error(`CSV downloaded, but archiving failed: ${error.message}`);
       } else {
+        await logAudit(
+          "archived_on_download",
+          preview.archiveAfter.invoiceIds
+            .map((id) => invoices.find((i) => i.id === id))
+            .filter(Boolean)
+            .map((inv) => ({
+              invoiceId: inv!.id, jobId: inv!.job_id,
+              weekStart: inv!.week_start, weekEnd: inv!.week_end,
+            })),
+          { filename: finalName },
+        );
         toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} and archived ${preview.archiveAfter.groupCount}`);
         setSelected(new Set());
       }
@@ -632,12 +756,24 @@ export const InvoicingManager = ({
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-card p-4 shadow-deep space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Three-stage invoicing so nothing gets missed or double-billed:
-          <span className="font-semibold"> Open</span> →
-          <span className="font-semibold"> Ready for Invoicing</span> →
-          <span className="font-semibold"> Archived</span>.
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Three-stage invoicing so nothing gets missed or double-billed:
+            <span className="font-semibold"> Open</span> →
+            <span className="font-semibold"> Ready for Invoicing</span> →
+            <span className="font-semibold"> Archived</span>.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={openAuditLog}
+            className="font-display tracking-wider shrink-0"
+          >
+            <History className="h-4 w-4" />
+            Audit log
+          </Button>
+        </div>
         <p className="text-xs text-muted-foreground">
           Select the job-weeks you want, then use the action bar to move them through each stage.
           In QuickBooks Online: <span className="italic">Settings → Import data → Invoices</span>, upload the CSV, map the columns, then review &amp; import.
@@ -1126,6 +1262,61 @@ export const InvoicingManager = ({
             >
               <Download className="h-4 w-4" />
               {hasDuplicates ? "Re-export CSV" : "Download CSV"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={auditOpen} onOpenChange={setAuditOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-display tracking-wider flex items-center gap-2">
+              <History className="h-5 w-5" /> Invoice audit log
+            </DialogTitle>
+            <DialogDescription>
+              Last 500 actions — who moved invoices between stages and when CSVs were downloaded. Admin-only.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-3">
+            {auditLoading ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Loading…
+              </div>
+            ) : auditRows.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                No audit entries yet.
+              </div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {auditRows.map((row) => {
+                  const job = jobs.find((j) => j.id === row.job_id);
+                  const filename =
+                    row.details && typeof (row.details as { filename?: unknown }).filename === "string"
+                      ? (row.details as { filename: string }).filename
+                      : null;
+                  return (
+                    <li key={row.id} className="py-3 text-sm flex flex-col gap-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold">{AUDIT_LABELS[row.action] ?? row.action}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(row.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {row.actor_email ?? row.actor_id ?? "Unknown user"}
+                        {job ? ` · ${job.name}` : row.job_id ? ` · job ${row.job_id.slice(0, 8)}` : ""}
+                        {row.week_start ? ` · week of ${formatDate(row.week_start)}` : ""}
+                        {filename ? ` · ${filename}` : ""}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAuditOpen(false)} className="w-full sm:w-auto">
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
