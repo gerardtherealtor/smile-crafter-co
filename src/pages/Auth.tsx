@@ -82,10 +82,20 @@ const AuthPage = () => {
       return false;
     }
     toast.success("Welcome back");
-    if (persistBio) {
+    // Persist the "Remember me" preference. When unchecked, AuthContext will
+    // sign the user out on the next cold app launch.
+    try {
+      if (persistBio) {
+        localStorage.removeItem("dnc_ephemeral");
+      } else {
+        localStorage.setItem("dnc_ephemeral", "1");
+      }
+      sessionStorage.setItem("dnc_session_alive", "1");
+    } catch {}
+    if (persistBio && bioSupported) {
       await saveCredentials(email, password);
-    } else {
-      // User unchecked it → clear any previously saved credentials.
+    } else if (bioSupported) {
+      // User unchecked it → clear any previously saved biometric credentials.
       await clearCredentials();
     }
     return true;
