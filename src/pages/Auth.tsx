@@ -36,7 +36,13 @@ const AuthPage = () => {
   const [bioSupported, setBioSupported] = useState(false);
   const [bioChecking, setBioChecking] = useState(true);
   const [bioAuthenticating, setBioAuthenticating] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(() => {
+    try {
+      return localStorage.getItem("dnc_ephemeral") !== "1";
+    } catch {
+      return true;
+    }
+  });
 
   // Friendly label for the platform's biometric method.
   const bioLabel = (() => {
@@ -76,10 +82,20 @@ const AuthPage = () => {
       return false;
     }
     toast.success("Welcome back");
-    if (persistBio) {
+    // Persist the "Remember me" preference. When unchecked, AuthContext will
+    // sign the user out on the next cold app launch.
+    try {
+      if (persistBio) {
+        localStorage.removeItem("dnc_ephemeral");
+      } else {
+        localStorage.setItem("dnc_ephemeral", "1");
+      }
+      sessionStorage.setItem("dnc_session_alive", "1");
+    } catch {}
+    if (persistBio && bioSupported) {
       await saveCredentials(email, password);
-    } else {
-      // User unchecked it → clear any previously saved credentials.
+    } else if (bioSupported) {
+      // User unchecked it → clear any previously saved biometric credentials.
       await clearCredentials();
     }
     return true;
@@ -190,22 +206,20 @@ const AuthPage = () => {
                 <Label htmlFor="login-password">Password</Label>
                 <Input id="login-password" name="password" type="password" autoComplete="current-password" required className="mt-1.5" />
               </div>
-              {bioSupported && (
-                <label className="flex items-start gap-2.5 cursor-pointer select-none rounded-md border border-border bg-background/50 p-3">
-                  <Checkbox
-                    id="remember"
-                    checked={remember}
-                    onCheckedChange={(v) => setRemember(v === true)}
-                    className="mt-0.5 data-[state=checked]:bg-maple data-[state=checked]:border-maple"
-                  />
-                  <span className="text-sm leading-snug">
-                    <span className="font-medium">Remember me</span>
-                    <span className="block text-xs text-muted-foreground mt-0.5">
-                      Save my login and let me sign in with {bioLabel} next time.
-                    </span>
+              <label className="flex items-start gap-2.5 cursor-pointer select-none rounded-md border border-border bg-background/50 p-3">
+                <Checkbox
+                  id="remember"
+                  checked={remember}
+                  onCheckedChange={(v) => setRemember(v === true)}
+                  className="mt-0.5 data-[state=checked]:bg-maple data-[state=checked]:border-maple"
+                />
+                <span className="text-sm leading-snug">
+                  <span className="font-medium">Remember me</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">
+                    Keep me signed in on this device{bioSupported ? ` and let me sign in with ${bioLabel} next time` : ""}.
                   </span>
-                </label>
-              )}
+                </span>
+              </label>
               <Button type="submit" disabled={busy || bioAuthenticating} className="w-full bg-primary hover:bg-primary/90 font-display tracking-wider">
                 {busy ? "Signing in…" : "Sign In"}
               </Button>

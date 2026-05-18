@@ -48,6 +48,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    // "Remember me" handling: if the user opted out of staying signed in,
+    // we sign them out at the start of any NEW browser session (new tab
+    // launch / app cold start). Within the same tab we keep them in.
+    try {
+      const ephemeral = localStorage.getItem("dnc_ephemeral") === "1";
+      const alive = sessionStorage.getItem("dnc_session_alive") === "1";
+      if (ephemeral && !alive) {
+        supabase.auth.signOut();
+      }
+      sessionStorage.setItem("dnc_session_alive", "1");
+    } catch {}
+
     // Set listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
