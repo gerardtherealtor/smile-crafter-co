@@ -541,7 +541,8 @@ export const InvoicingManager = ({
       toast.error("Confirm the duplicate-billing warning before downloading");
       return;
     }
-    downloadCsv(preview.filename, preview.rows);
+    const finalName = filename.trim().endsWith(".csv") ? filename.trim() : `${slugify(filename || batchName)}.csv`;
+    downloadCsv(finalName, preview.rows);
     const count = preview.rows.length - 1;
     const nowIso = new Date().toISOString();
 
