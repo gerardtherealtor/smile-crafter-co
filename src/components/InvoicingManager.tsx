@@ -407,7 +407,28 @@ export const InvoicingManager = ({
     archiveAfter: { invoiceIds: string[]; groupCount: number } | null;
     exportedInvoiceIds: string[];
     duplicates: { label: string; lastAt: string; count: number }[];
+    totals: { invoices: number; lines: number; hours: number; jobs: number; weeks: number };
+    batchName: string;
   } | null>(null);
+
+  // Editable batch name + filename — user can rename before download.
+  const [batchName, setBatchName] = useState("");
+  const [filename, setFilename] = useState("");
+  useEffect(() => {
+    if (preview) {
+      setBatchName(preview.batchName);
+      setFilename(preview.filename);
+    }
+  }, [preview]);
+
+  const slugify = (s: string) =>
+    s.trim().replace(/[^A-Za-z0-9._-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "") || "qbo-invoices";
+
+  // Keep filename in sync with batch name unless the user has manually edited it.
+  const onBatchNameChange = (v: string) => {
+    setBatchName(v);
+    setFilename(`${slugify(v)}.csv`);
+  };
 
   const dupeInfo = (g: JobWeekGroup) =>
     g.invoice && g.invoice.csv_export_count > 0
@@ -417,6 +438,14 @@ export const InvoicingManager = ({
           count: g.invoice.csv_export_count,
         }
       : null;
+
+  const computeTotals = (gs: JobWeekGroup[]) => ({
+    invoices: gs.length,
+    lines: gs.reduce((s, g) => s + g.entries.length, 0),
+    hours: gs.reduce((s, g) => s + g.totalHours, 0),
+    jobs: new Set(gs.map((g) => g.job.id)).size,
+    weeks: new Set(gs.map((g) => g.week_start)).size,
+  });
 
   // Create CSV from selected READY job-weeks (with option to archive on download).
   const exportSelectedReady = () => {
@@ -428,8 +457,10 @@ export const InvoicingManager = ({
     const duplicates = target.map(dupeInfo).filter(Boolean) as {
       label: string; lastAt: string; count: number;
     }[];
+    const today = new Date().toISOString().slice(0, 10);
+    const batch = `QBO Invoice Batch — ${today} — ${target.length} invoice${target.length === 1 ? "" : "s"}`;
     setPreview({
-      filename: `qbo-invoices-${new Date().toISOString().slice(0, 10)}.csv`,
+      filename: `${slugify(batch)}.csv`,
       rows: [QBO_HEADERS, ...target.map(groupToRow)],
       label: `${target.length} ready job-week${target.length === 1 ? "" : "s"}`,
       archiveAfter: {
@@ -438,14 +469,17 @@ export const InvoicingManager = ({
       },
       exportedInvoiceIds: target.map((g) => g.invoice!.id),
       duplicates,
+      totals: computeTotals(target),
+      batchName: batch,
     });
   };
 
   // Single-row export from expanded card (works in any tab).
   const exportOne = (g: JobWeekGroup) => {
     const dup = dupeInfo(g);
+    const batch = `QBO Invoice — ${g.job.name} — week of ${formatDate(g.week_start)}`;
     setPreview({
-      filename: `qbo-invoice-${g.job.name.replace(/[^A-Za-z0-9]+/g, "_")}-${g.week_start}.csv`,
+      filename: `${slugify(batch)}.csv`,
       rows: [QBO_HEADERS, groupToRow(g)],
       label: `${g.job.name} · week of ${formatDate(g.week_start)}`,
       archiveAfter: g.stage === "ready" && g.invoice
@@ -453,6 +487,8 @@ export const InvoicingManager = ({
         : null,
       exportedInvoiceIds: g.invoice ? [g.invoice.id] : [],
       duplicates: dup ? [dup] : [],
+      totals: computeTotals([g]),
+      batchName: batch,
     });
   };
 
@@ -505,7 +541,8 @@ export const InvoicingManager = ({
       toast.error("Confirm the duplicate-billing warning before downloading");
       return;
     }
-    downloadCsv(preview.filename, preview.rows);
+    const finalName = filename.trim().endsWith(".csv") ? filename.trim() : `${slugify(filename || batchName)}.csv`;
+    downloadCsv(finalName, preview.rows);
     const count = preview.rows.length - 1;
     const nowIso = new Date().toISOString();
 
@@ -919,13 +956,49 @@ export const InvoicingManager = ({
               CSV Preview — QuickBooks Online
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm break-words">
-              {preview?.label} · {preview ? preview.rows.length - 1 : 0} invoice row(s) ·{" "}
-              <span className="font-mono break-all">{preview?.filename}</span>
+              {preview?.label}
             </DialogDescription>
           </DialogHeader>
 
           {preview && (
             <div className="space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Invoices</div>
+                  <div className="font-display text-2xl">{preview.totals.invoices}</div>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Line items</div>
+                  <div className="font-display text-2xl">{preview.totals.lines}</div>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total hours</div>
+                  <div className="font-display text-2xl">{formatHours(preview.totals.hours)}</div>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Jobs · Weeks</div>
+                  <div className="font-display text-2xl">
+                    {preview.totals.jobs}<span className="text-muted-foreground text-base"> · </span>{preview.totals.weeks}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                <label className="block">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+                    Batch name
+                  </div>
+                  <Input
+                    value={batchName}
+                    onChange={(e) => onBatchNameChange(e.target.value)}
+                    placeholder="QBO Invoice Batch — 2026-05-18"
+                    className="font-display tracking-wide"
+                  />
+                </label>
+                <div className="text-[11px] text-muted-foreground">
+                  Saved as <span className="font-mono break-all text-foreground">{filename || "qbo-invoices.csv"}</span>
+                </div>
+              </div>
               <div
                 className={`rounded-lg border p-3 text-sm flex items-start gap-2 ${
                   previewValidation.ok
