@@ -436,6 +436,12 @@ export const InvoicingManager = ({
       .in("id", ids);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
+    await logAudit(
+      "archived_to_ready",
+      target.map((g) => ({
+        invoiceId: g.invoice!.id, jobId: g.job.id, weekStart: g.week_start, weekEnd: g.week_end,
+      })),
+    );
     toast.success(`Restored ${target.length} to Ready for Invoicing`);
     setSelected(new Set());
     load();
