@@ -54,6 +54,7 @@ interface TEntry {
 interface InvoiceRecord {
   id: string; job_id: string; week_start: string; week_end: string;
   invoiced_at: string; notes: string | null; status: "ready" | "archived";
+  csv_exported_at: string | null; csv_export_count: number;
 }
 
 type Stage = "open" | "ready" | "archived";
@@ -103,7 +104,7 @@ export const InvoicingManager = ({
         .order("work_date", { ascending: false }),
       supabase
         .from("job_invoices")
-        .select("id,job_id,week_start,week_end,invoiced_at,notes,status")
+        .select("id,job_id,week_start,week_end,invoiced_at,notes,status,csv_exported_at,csv_export_count")
         .order("week_start", { ascending: false }),
     ]);
     if (e.data) setEntries(e.data as TEntry[]);
@@ -397,12 +398,25 @@ export const InvoicingManager = ({
   };
 
   // Preview state — opened before download so admin can verify QBO column mapping.
+  // `exportedInvoiceIds` are the job_invoices.id values to bump csv_export_count on.
+  // `duplicates` lists any selected job-weeks that have already been exported before.
   const [preview, setPreview] = useState<{
     filename: string;
     rows: (string | number)[][];
     label: string;
     archiveAfter: { invoiceIds: string[]; groupCount: number } | null;
+    exportedInvoiceIds: string[];
+    duplicates: { label: string; lastAt: string; count: number }[];
   } | null>(null);
+
+  const dupeInfo = (g: JobWeekGroup) =>
+    g.invoice && g.invoice.csv_export_count > 0
+      ? {
+          label: `${g.job.name} · week of ${formatDate(g.week_start)}`,
+          lastAt: g.invoice.csv_exported_at ?? g.invoice.invoiced_at,
+          count: g.invoice.csv_export_count,
+        }
+      : null;
 
   // Create CSV from selected READY job-weeks (with option to archive on download).
   const exportSelectedReady = () => {
@@ -411,6 +425,9 @@ export const InvoicingManager = ({
       toast.info("Select at least one ready job-week with logged hours");
       return;
     }
+    const duplicates = target.map(dupeInfo).filter(Boolean) as {
+      label: string; lastAt: string; count: number;
+    }[];
     setPreview({
       filename: `qbo-invoices-${new Date().toISOString().slice(0, 10)}.csv`,
       rows: [QBO_HEADERS, ...target.map(groupToRow)],
@@ -419,11 +436,14 @@ export const InvoicingManager = ({
         invoiceIds: target.map((g) => g.invoice!.id),
         groupCount: target.length,
       },
+      exportedInvoiceIds: target.map((g) => g.invoice!.id),
+      duplicates,
     });
   };
 
   // Single-row export from expanded card (works in any tab).
   const exportOne = (g: JobWeekGroup) => {
+    const dup = dupeInfo(g);
     setPreview({
       filename: `qbo-invoice-${g.job.name.replace(/[^A-Za-z0-9]+/g, "_")}-${g.week_start}.csv`,
       rows: [QBO_HEADERS, groupToRow(g)],
@@ -431,6 +451,8 @@ export const InvoicingManager = ({
       archiveAfter: g.stage === "ready" && g.invoice
         ? { invoiceIds: [g.invoice.id], groupCount: 1 }
         : null,
+      exportedInvoiceIds: g.invoice ? [g.invoice.id] : [],
+      duplicates: dup ? [dup] : [],
     });
   };
 
@@ -471,28 +493,53 @@ export const InvoicingManager = ({
   }, [preview]);
 
   const [archiveOnDownload, setArchiveOnDownload] = useState(true);
-  useEffect(() => { setArchiveOnDownload(true); }, [preview]);
+  const [confirmDuplicate, setConfirmDuplicate] = useState(false);
+  useEffect(() => { setArchiveOnDownload(true); setConfirmDuplicate(false); }, [preview]);
+
+  const hasDuplicates = (preview?.duplicates.length ?? 0) > 0;
+  const downloadBlocked = hasDuplicates && !confirmDuplicate;
 
   const confirmDownload = async () => {
     if (!preview) return;
+    if (downloadBlocked) {
+      toast.error("Confirm the duplicate-billing warning before downloading");
+      return;
+    }
     downloadCsv(preview.filename, preview.rows);
     const count = preview.rows.length - 1;
+    const nowIso = new Date().toISOString();
+
+    // Bump export count + timestamp on every invoice row included in this CSV.
+    if (preview.exportedInvoiceIds.length > 0) {
+      await Promise.all(
+        preview.exportedInvoiceIds.map(async (id) => {
+          const inv = invoices.find((i) => i.id === id);
+          await supabase
+            .from("job_invoices")
+            .update({
+              csv_exported_at: nowIso,
+              csv_export_count: (inv?.csv_export_count ?? 0) + 1,
+            })
+            .eq("id", id);
+        }),
+      );
+    }
 
     if (preview.archiveAfter && archiveOnDownload) {
       const { error } = await supabase
         .from("job_invoices")
-        .update({ status: "archived", invoiced_at: new Date().toISOString() })
+        .update({ status: "archived", invoiced_at: nowIso })
         .in("id", preview.archiveAfter.invoiceIds);
       if (error) {
         toast.error(`CSV downloaded, but archiving failed: ${error.message}`);
       } else {
         toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} and archived ${preview.archiveAfter.groupCount}`);
         setSelected(new Set());
-        load();
       }
     } else {
       toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} to CSV`);
     }
+    load();
     setPreview(null);
   };
 
@@ -777,6 +824,13 @@ export const InvoicingManager = ({
                       Archived {new Date(g.invoice!.invoiced_at).toLocaleDateString()}
                     </div>
                   )}
+                  {g.invoice && g.invoice.csv_export_count > 0 && (
+                    <div className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-destructive ml-0 sm:ml-3">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      CSV already exported {g.invoice.csv_export_count}×
+                      {g.invoice.csv_exported_at && ` · last ${new Date(g.invoice.csv_exported_at).toLocaleDateString()}`}
+                    </div>
+                  )}
                 </button>
               </div>
 
@@ -905,6 +959,39 @@ export const InvoicingManager = ({
                 </div>
               </div>
 
+              {hasDuplicates && (
+                <div className="rounded-lg border-2 border-destructive bg-destructive/10 p-3 text-sm space-y-2">
+                  <div className="flex items-start gap-2 text-destructive font-semibold">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>
+                      Duplicate billing warning — {preview!.duplicates.length} job-week
+                      {preview!.duplicates.length === 1 ? " has" : "s have"} already had a CSV exported:
+                    </span>
+                  </div>
+                  <ul className="list-disc list-inside text-xs text-destructive/90 space-y-0.5 pl-1">
+                    {preview!.duplicates.slice(0, 6).map((d, i) => (
+                      <li key={i}>
+                        <span className="font-medium">{d.label}</span> — exported {d.count}× ·
+                        last {new Date(d.lastAt).toLocaleString()}
+                      </li>
+                    ))}
+                    {preview!.duplicates.length > 6 && (
+                      <li>…and {preview!.duplicates.length - 6} more</li>
+                    )}
+                  </ul>
+                  <label className="flex items-start gap-2 pt-1 cursor-pointer text-destructive">
+                    <Checkbox
+                      checked={confirmDuplicate}
+                      onCheckedChange={(c) => setConfirmDuplicate(!!c)}
+                      className="mt-0.5 border-destructive data-[state=checked]:bg-destructive"
+                    />
+                    <span className="text-xs font-medium">
+                      I understand this will re-bill the customer. Export anyway.
+                    </span>
+                  </label>
+                </div>
+              )}
+
               {preview.archiveAfter && (
                 <label className="flex items-center gap-2 rounded-lg border border-border bg-card p-3 text-sm cursor-pointer">
                   <Checkbox
@@ -960,11 +1047,12 @@ export const InvoicingManager = ({
             </Button>
             <Button
               onClick={confirmDownload}
-              disabled={!previewValidation.ok}
+              disabled={!previewValidation.ok || downloadBlocked}
+              variant={hasDuplicates ? "destructive" : "default"}
               className="font-display tracking-wider w-full sm:w-auto"
             >
               <Download className="h-4 w-4" />
-              Download CSV
+              {hasDuplicates ? "Re-export CSV" : "Download CSV"}
             </Button>
           </DialogFooter>
         </DialogContent>
