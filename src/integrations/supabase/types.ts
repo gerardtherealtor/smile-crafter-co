@@ -109,6 +109,7 @@ export type Database = {
           invoiced_by: string | null
           job_id: string
           notes: string | null
+          status: string
           updated_at: string
           week_end: string
           week_start: string
@@ -120,6 +121,7 @@ export type Database = {
           invoiced_by?: string | null
           job_id: string
           notes?: string | null
+          status?: string
           updated_at?: string
           week_end: string
           week_start: string
@@ -131,6 +133,7 @@ export type Database = {
           invoiced_by?: string | null
           job_id?: string
           notes?: string | null
+          status?: string
           updated_at?: string
           week_end?: string
           week_start?: string
