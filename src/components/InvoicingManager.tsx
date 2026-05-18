@@ -407,7 +407,28 @@ export const InvoicingManager = ({
     archiveAfter: { invoiceIds: string[]; groupCount: number } | null;
     exportedInvoiceIds: string[];
     duplicates: { label: string; lastAt: string; count: number }[];
+    totals: { invoices: number; lines: number; hours: number; jobs: number; weeks: number };
+    batchName: string;
   } | null>(null);
+
+  // Editable batch name + filename — user can rename before download.
+  const [batchName, setBatchName] = useState("");
+  const [filename, setFilename] = useState("");
+  useEffect(() => {
+    if (preview) {
+      setBatchName(preview.batchName);
+      setFilename(preview.filename);
+    }
+  }, [preview]);
+
+  const slugify = (s: string) =>
+    s.trim().replace(/[^A-Za-z0-9._-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "") || "qbo-invoices";
+
+  // Keep filename in sync with batch name unless the user has manually edited it.
+  const onBatchNameChange = (v: string) => {
+    setBatchName(v);
+    setFilename(`${slugify(v)}.csv`);
+  };
 
   const dupeInfo = (g: JobWeekGroup) =>
     g.invoice && g.invoice.csv_export_count > 0
@@ -417,6 +438,14 @@ export const InvoicingManager = ({
           count: g.invoice.csv_export_count,
         }
       : null;
+
+  const computeTotals = (gs: JobWeekGroup[]) => ({
+    invoices: gs.length,
+    lines: gs.reduce((s, g) => s + g.entries.length, 0),
+    hours: gs.reduce((s, g) => s + g.totalHours, 0),
+    jobs: new Set(gs.map((g) => g.job.id)).size,
+    weeks: new Set(gs.map((g) => g.week_start)).size,
+  });
 
   // Create CSV from selected READY job-weeks (with option to archive on download).
   const exportSelectedReady = () => {
@@ -428,8 +457,10 @@ export const InvoicingManager = ({
     const duplicates = target.map(dupeInfo).filter(Boolean) as {
       label: string; lastAt: string; count: number;
     }[];
+    const today = new Date().toISOString().slice(0, 10);
+    const batch = `QBO Invoice Batch — ${today} — ${target.length} invoice${target.length === 1 ? "" : "s"}`;
     setPreview({
-      filename: `qbo-invoices-${new Date().toISOString().slice(0, 10)}.csv`,
+      filename: `${slugify(batch)}.csv`,
       rows: [QBO_HEADERS, ...target.map(groupToRow)],
       label: `${target.length} ready job-week${target.length === 1 ? "" : "s"}`,
       archiveAfter: {
@@ -438,14 +469,17 @@ export const InvoicingManager = ({
       },
       exportedInvoiceIds: target.map((g) => g.invoice!.id),
       duplicates,
+      totals: computeTotals(target),
+      batchName: batch,
     });
   };
 
   // Single-row export from expanded card (works in any tab).
   const exportOne = (g: JobWeekGroup) => {
     const dup = dupeInfo(g);
+    const batch = `QBO Invoice — ${g.job.name} — week of ${formatDate(g.week_start)}`;
     setPreview({
-      filename: `qbo-invoice-${g.job.name.replace(/[^A-Za-z0-9]+/g, "_")}-${g.week_start}.csv`,
+      filename: `${slugify(batch)}.csv`,
       rows: [QBO_HEADERS, groupToRow(g)],
       label: `${g.job.name} · week of ${formatDate(g.week_start)}`,
       archiveAfter: g.stage === "ready" && g.invoice
@@ -453,6 +487,8 @@ export const InvoicingManager = ({
         : null,
       exportedInvoiceIds: g.invoice ? [g.invoice.id] : [],
       duplicates: dup ? [dup] : [],
+      totals: computeTotals([g]),
+      batchName: batch,
     });
   };
 
