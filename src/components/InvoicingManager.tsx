@@ -123,6 +123,22 @@ export const InvoicingManager = ({
   const [jobFilter, setJobFilter] = useState<string>("all");
   const [rangeFilter, setRangeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+
+  const openAuditLog = async () => {
+    setAuditOpen(true);
+    setAuditLoading(true);
+    const { data, error } = await supabase
+      .from("invoice_audit_log")
+      .select("id,action,invoice_id,job_id,week_start,week_end,actor_id,actor_email,details,created_at")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    setAuditLoading(false);
+    if (error) { toast.error(error.message); return; }
+    setAuditRows((data ?? []) as unknown as AuditRow[]);
+  };
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
