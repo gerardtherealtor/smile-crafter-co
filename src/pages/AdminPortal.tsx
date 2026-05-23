@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { PortalLayout } from "@/components/PortalLayout";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ interface ReportRow { id: string; week_start: string; week_end: string; pdf_path
 interface RosterRow { id: string; full_name: string; is_active: boolean; linked_profile_id: string | null }
 
 const AdminPortal = () => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState("week");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -90,7 +92,7 @@ const AdminPortal = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Weekly report sent");
+      toast.success(t("admin.weeklyReportSent"));
       load();
     }
   };
@@ -100,7 +102,7 @@ const AdminPortal = () => {
       .from("weekly-reports")
       .createSignedUrl(path, 60 * 10, { download: true });
     if (error || !data) {
-      toast.error("Could not generate download link.");
+      toast.error(t("admin.downloadLink"));
       return;
     }
     // Use an anchor click instead of window.open — mobile Safari/PWA blocks
@@ -118,16 +120,16 @@ const AdminPortal = () => {
 
   return (
     <PortalLayout
-      title="Admin Dashboard"
-      subtitle={`Week of ${formatDate(monday)} – ${formatDate(sunday)}`}
+      title={t("admin.title")}
+      subtitle={t("employee.subtitle", { range: `${formatDate(monday)} – ${formatDate(sunday)}` })}
     >
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="mb-6 flex-wrap h-auto">
-          <TabsTrigger value="week" className="font-display tracking-wider"><Users className="h-4 w-4 mr-1.5" />Crew Week</TabsTrigger>
-          <TabsTrigger value="invoicing" className="font-display tracking-wider"><Receipt className="h-4 w-4 mr-1.5" />Invoicing</TabsTrigger>
-          <TabsTrigger value="roster" className="font-display tracking-wider"><ClipboardList className="h-4 w-4 mr-1.5" />Roster</TabsTrigger>
-          <TabsTrigger value="jobs" className="font-display tracking-wider"><Briefcase className="h-4 w-4 mr-1.5" />Jobs</TabsTrigger>
-          <TabsTrigger value="reports" className="font-display tracking-wider"><FileDown className="h-4 w-4 mr-1.5" />Reports</TabsTrigger>
+          <TabsTrigger value="week" className="font-display tracking-wider"><Users className="h-4 w-4 mr-1.5" />{t("admin.tabs.week")}</TabsTrigger>
+          <TabsTrigger value="invoicing" className="font-display tracking-wider"><Receipt className="h-4 w-4 mr-1.5" />{t("admin.tabs.invoicing")}</TabsTrigger>
+          <TabsTrigger value="roster" className="font-display tracking-wider"><ClipboardList className="h-4 w-4 mr-1.5" />{t("admin.tabs.roster")}</TabsTrigger>
+          <TabsTrigger value="jobs" className="font-display tracking-wider"><Briefcase className="h-4 w-4 mr-1.5" />{t("admin.tabs.jobs")}</TabsTrigger>
+          <TabsTrigger value="reports" className="font-display tracking-wider"><FileDown className="h-4 w-4 mr-1.5" />{t("admin.tabs.reports")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="week" className="space-y-5">
@@ -196,21 +198,21 @@ const AdminPortal = () => {
         <TabsContent value="reports">
           <div className="rounded-xl border border-border bg-card shadow-deep">
             <div className="p-4 border-b border-border">
-              <h2 className="font-display text-lg uppercase tracking-wide">Generated Reports</h2>
-              <p className="text-sm text-muted-foreground">Auto-generated every Friday at 6 PM. Click to download the PDF.</p>
+              <h2 className="font-display text-lg uppercase tracking-wide">{t("admin.generatedReports")}</h2>
+              <p className="text-sm text-muted-foreground">{t("admin.generatedHelp")}</p>
             </div>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Week</TableHead>
-                  <TableHead className="text-right">Regular</TableHead>
-                  <TableHead className="text-right">Overtime</TableHead>
-                  <TableHead className="text-right">PDF</TableHead>
+                  <TableHead>{t("admin.week")}</TableHead>
+                  <TableHead className="text-right">{t("admin.regular")}</TableHead>
+                  <TableHead className="text-right">{t("admin.overtime")}</TableHead>
+                  <TableHead className="text-right">{t("admin.pdf")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {reports.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No reports yet.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{t("admin.noReports")}</TableCell></TableRow>
                 ) : reports.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell>{formatDate(r.week_start)} – {formatDate(r.week_end)}</TableCell>
@@ -219,9 +221,9 @@ const AdminPortal = () => {
                     <TableCell className="text-right">
                       {r.pdf_path ? (
                         <Button size="sm" variant="outline" onClick={() => downloadReport(r.pdf_path!)}>
-                          <FileDown className="h-4 w-4 mr-1.5" /> Download
+                          <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
                         </Button>
-                      ) : <span className="text-muted-foreground text-sm">—</span>}
+                      ) : <span className="text-muted-foreground text-sm">{t("common.emDash")}</span>}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -242,6 +244,7 @@ const BigStat = ({ label, value, accent }: { label: string; value: string; accen
 );
 
 const JobsManager = ({ jobs, reload }: { jobs: Job[]; reload: () => void }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [busy, setBusy] = useState(false);
@@ -253,7 +256,7 @@ const JobsManager = ({ jobs, reload }: { jobs: Job[]; reload: () => void }) => {
     const { error } = await supabase.from("jobs").insert({ name: name.trim(), address: address.trim() || null });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    setName(""); setAddress(""); toast.success("Job added"); reload();
+    setName(""); setAddress(""); toast.success(t("admin.jobs.jobAdded")); reload();
   };
 
   const toggle = async (j: Job) => {
@@ -264,10 +267,10 @@ const JobsManager = ({ jobs, reload }: { jobs: Job[]; reload: () => void }) => {
   return (
     <div className="space-y-5">
       <form onSubmit={add} className="rounded-xl border border-border bg-card p-5 shadow-deep grid sm:grid-cols-[1fr_1fr_auto] gap-3">
-        <Input placeholder="Job name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
-        <Input placeholder="Address (optional)" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={200} />
+        <Input placeholder={t("admin.jobs.name")} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
+        <Input placeholder={t("admin.jobs.address")} value={address} onChange={(e) => setAddress(e.target.value)} maxLength={200} />
         <Button type="submit" disabled={busy} className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
-          <Plus className="h-4 w-4 mr-1.5" /> Add
+          <Plus className="h-4 w-4 mr-1.5" /> {t("common.add")}
         </Button>
       </form>
 
@@ -275,21 +278,21 @@ const JobsManager = ({ jobs, reload }: { jobs: Job[]; reload: () => void }) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Address</TableHead>
-              <TableHead className="text-right">Status</TableHead>
+              <TableHead>{t("admin.roster.name")}</TableHead>
+              <TableHead>{t("admin.jobs.address").replace(" (opcional)", "").replace(" (optional)", "")}</TableHead>
+              <TableHead className="text-right">{t("admin.jobs.status")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {jobs.length === 0 ? (
-              <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No jobs yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">{t("admin.jobs.noJobs")}</TableCell></TableRow>
             ) : jobs.map((j) => (
               <TableRow key={j.id}>
                 <TableCell className="font-medium">{j.name}</TableCell>
-                <TableCell className="text-muted-foreground">{j.address ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{j.address ?? t("common.emDash")}</TableCell>
                 <TableCell className="text-right">
                   <Button size="sm" variant={j.is_active ? "outline" : "secondary"} onClick={() => toggle(j)}>
-                    {j.is_active ? "Active" : "Inactive"}
+                    {j.is_active ? t("common.active") : t("common.inactive")}
                   </Button>
                 </TableCell>
               </TableRow>
@@ -314,6 +317,7 @@ interface DetailEntry {
 const EmployeeWeekDialog = ({
   profile, jobs, onClose,
 }: { profile: Profile; jobs: Job[]; onClose: () => void }) => {
+  const { t } = useTranslation();
   const [weekOffset, setWeekOffset] = useState(0);
   const [entries, setEntries] = useState<DetailEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -345,7 +349,7 @@ const EmployeeWeekDialog = ({
     return () => { cancelled = true; };
   }, [profile.id, monday, sunday]);
 
-  const jobName = (id: string | null) => jobs.find((j) => j.id === id)?.name ?? "—";
+  const jobName = (id: string | null) => jobs.find((j) => j.id === id)?.name ?? t("common.emDash");
   const total = entries.reduce((s, e) => s + Number(e.hours), 0);
   const { regular, overtime } = splitOvertime(total);
 
@@ -370,35 +374,35 @@ const EmployeeWeekDialog = ({
 
         <div className="flex items-center justify-between mt-2">
           <Button size="sm" variant="outline" onClick={() => setWeekOffset((w) => w - 1)}>
-            <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+            <ChevronLeft className="h-4 w-4 mr-1" /> {t("common.prev")}
           </Button>
           <div className="text-sm font-medium">
             {formatDate(monday)} – {formatDate(sunday)}
-            {weekOffset === 0 && <span className="ml-2 text-xs text-muted-foreground">(this week)</span>}
+            {weekOffset === 0 && <span className="ml-2 text-xs text-muted-foreground">{t("common.thisWeek")}</span>}
           </div>
           <Button size="sm" variant="outline" onClick={() => setWeekOffset((w) => w + 1)} disabled={weekOffset >= 0}>
-            Next <ChevronRight className="h-4 w-4 ml-1" />
+            {t("common.next")} <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
 
         <div className="grid grid-cols-3 gap-3 mt-3">
-          <BigStat label="Total" value={formatHours(total)} />
-          <BigStat label="Regular" value={formatHours(regular)} />
-          <BigStat label="OT" value={formatHours(overtime)} accent />
+          <BigStat label={t("admin.total")} value={formatHours(total)} />
+          <BigStat label={t("admin.regular")} value={formatHours(regular)} />
+          <BigStat label={t("admin.ot")} value={formatHours(overtime)} accent />
         </div>
 
         <div className="mt-4 space-y-4">
           {loading ? (
-            <p className="text-center text-muted-foreground py-8">Loading…</p>
+            <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
           ) : byDate.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No hours logged this week.</p>
+            <p className="text-center text-muted-foreground py-8">{t("admin.roster.nothingLogged")}</p>
           ) : byDate.map(([date, dayEntries]) => {
             const dayTotal = dayEntries.reduce((s, e) => s + Number(e.hours), 0);
             return (
               <div key={date} className="rounded-lg border border-border bg-card/50 p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="font-display tracking-wide">{formatDate(date)}</div>
-                  <div className="text-sm font-display">{formatHours(dayTotal)} hrs</div>
+                  <div className="text-sm font-display">{formatHours(dayTotal)} {t("common.hours")}</div>
                 </div>
                 <div className="space-y-2">
                   {dayEntries.map((e) => (
@@ -406,7 +410,7 @@ const EmployeeWeekDialog = ({
                       <div className="flex justify-between flex-wrap gap-2">
                         <span className="font-medium">{jobName(e.job_id)}</span>
                         <span className="text-muted-foreground">
-                          {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {formatHours(Number(e.hours))} hrs
+                          {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {formatHours(Number(e.hours))} {t("common.hours")}
                         </span>
                       </div>
                       {e.notes && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes}</div>}
@@ -425,6 +429,7 @@ const EmployeeWeekDialog = ({
 const RosterManager = ({
   roster, profiles, jobs, reload,
 }: { roster: RosterRow[]; profiles: Profile[]; jobs: Job[]; reload: () => void }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<Profile | null>(null);
@@ -436,7 +441,7 @@ const RosterManager = ({
     const { error } = await supabase.from("roster").insert({ full_name: name.trim() });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    setName(""); toast.success("Added to roster"); reload();
+    setName(""); toast.success(t("admin.roster.addedToRoster")); reload();
   };
 
   const toggle = async (r: RosterRow) => {
@@ -445,9 +450,9 @@ const RosterManager = ({
   };
 
   const remove = async (r: RosterRow) => {
-    if (!confirm(`Remove ${r.full_name} from the roster?`)) return;
+    if (!confirm(t("admin.roster.confirmRemove", { name: r.full_name }))) return;
     const { error } = await supabase.from("roster").delete().eq("id", r.id);
-    if (error) toast.error(error.message); else { toast.success("Removed"); reload(); }
+    if (error) toast.error(error.message); else { toast.success(t("admin.roster.removed")); reload(); }
   };
 
   // Match roster entry to a signed-up profile (by linked_profile_id or name)
@@ -462,7 +467,7 @@ const RosterManager = ({
   const openDetail = (r: RosterRow) => {
     const p = findProfile(r);
     if (!p) {
-      toast.error(`${r.full_name} hasn't signed up yet — no hours to show.`);
+      toast.error(t("admin.roster.notSignedUpYet", { name: r.full_name }));
       return;
     }
     setSelected(p);
@@ -486,14 +491,14 @@ const RosterManager = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead className="text-right">Status</TableHead>
-              <TableHead className="text-right">Remove</TableHead>
+              <TableHead>{t("admin.roster.name")}</TableHead>
+              <TableHead className="text-right">{t("admin.jobs.status")}</TableHead>
+              <TableHead className="text-right">{t("admin.roster.remove")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {roster.length === 0 ? (
-              <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No roster entries.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">{t("admin.roster.empty")}</TableCell></TableRow>
             ) : roster.map((r) => {
               const linked = findProfile(r);
               return (
@@ -503,15 +508,15 @@ const RosterManager = ({
                       onClick={() => openDetail(r)}
                       className="font-medium text-left hover:text-maple transition-colors disabled:opacity-50 disabled:hover:text-foreground"
                       disabled={!linked}
-                      title={linked ? "View weekly hours" : "Not signed up yet"}
+                      title={linked ? t("admin.roster.viewHours") : t("admin.roster.notSignedUp")}
                     >
                       {r.full_name}
                     </button>
-                    {!linked && <div className="text-xs text-muted-foreground">Not signed up yet</div>}
+                    {!linked && <div className="text-xs text-muted-foreground">{t("admin.roster.notSignedUp")}</div>}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button size="sm" variant={r.is_active ? "outline" : "secondary"} onClick={() => toggle(r)}>
-                      {r.is_active ? "Active" : "Inactive"}
+                      {r.is_active ? t("common.active") : t("common.inactive")}
                     </Button>
                   </TableCell>
                   <TableCell className="text-right">
