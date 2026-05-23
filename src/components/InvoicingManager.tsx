@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -113,6 +114,7 @@ export const InvoicingManager = ({
   jobs: Job[];
   profiles: Profile[];
 }) => {
+  const { t } = useTranslation();
   const [entries, setEntries] = useState<TEntry[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -757,12 +759,7 @@ export const InvoicingManager = ({
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-card p-4 shadow-deep space-y-2">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            Three-stage invoicing so nothing gets missed or double-billed:
-            <span className="font-semibold"> Open</span> →
-            <span className="font-semibold"> Ready for Invoicing</span> →
-            <span className="font-semibold"> Archived</span>.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("invoicing.intro")}</p>
           <Button
             type="button"
             size="sm"
@@ -771,25 +768,22 @@ export const InvoicingManager = ({
             className="font-display tracking-wider shrink-0"
           >
             <History className="h-4 w-4" />
-            Audit log
+            {t("invoicing.auditLog")}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Select the job-weeks you want, then use the action bar to move them through each stage.
-          In QuickBooks Online: <span className="italic">Settings → Import data → Invoices</span>, upload the CSV, map the columns, then review &amp; import.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("invoicing.helper")}</p>
       </div>
 
       <Tabs value={view} onValueChange={(v) => setView(v as Stage)}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="open" className="font-display tracking-wider text-xs sm:text-sm">
-            Open ({stageCounts.open})
+            {t("invoicing.open")} ({stageCounts.open})
           </TabsTrigger>
           <TabsTrigger value="ready" className="font-display tracking-wider text-xs sm:text-sm">
-            Ready ({stageCounts.ready})
+            {t("invoicing.ready")} ({stageCounts.ready})
           </TabsTrigger>
           <TabsTrigger value="archived" className="font-display tracking-wider text-xs sm:text-sm">
-            Archived ({stageCounts.archived})
+            {t("invoicing.archived")} ({stageCounts.archived})
           </TabsTrigger>
         </TabsList>
       </Tabs>

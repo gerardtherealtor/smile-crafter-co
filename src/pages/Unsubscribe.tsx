@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, MailX, CheckCircle2, AlertCircle } from "lucide-react";
@@ -9,6 +10,7 @@ type State = "loading" | "ready" | "already" | "invalid" | "submitting" | "done"
 
 const Unsubscribe = () => {
   const [params] = useSearchParams();
+  const { t } = useTranslation();
   const token = params.get("token");
   const [state, setState] = useState<State>("loading");
   const [errorMsg, setErrorMsg] = useState("");
@@ -39,14 +41,9 @@ const Unsubscribe = () => {
     const { data, error } = await supabase.functions.invoke("handle-email-unsubscribe", {
       body: { token },
     });
-    if (error) {
-      setState("error");
-      setErrorMsg(error.message);
-      return;
-    }
+    if (error) { setState("error"); setErrorMsg(error.message); return; }
     if (data?.success === false && data?.reason === "already_unsubscribed") {
-      setState("already");
-      return;
+      setState("already"); return;
     }
     setState("done");
   };
@@ -59,19 +56,17 @@ const Unsubscribe = () => {
         {state === "loading" && (
           <>
             <Loader2 className="h-8 w-8 mx-auto animate-spin text-maple mb-3" />
-            <p className="text-muted-foreground">Checking your link…</p>
+            <p className="text-muted-foreground">{t("unsubscribe.checking")}</p>
           </>
         )}
 
         {state === "ready" && (
           <>
             <MailX className="h-10 w-10 mx-auto text-maple mb-3" />
-            <h1 className="font-display text-2xl uppercase tracking-wide mb-2">Unsubscribe</h1>
-            <p className="text-muted-foreground mb-6">
-              Stop receiving notifications from Dwayne Noe Construction at this address?
-            </p>
+            <h1 className="font-display text-2xl uppercase tracking-wide mb-2">{t("unsubscribe.title")}</h1>
+            <p className="text-muted-foreground mb-6">{t("unsubscribe.prompt")}</p>
             <Button onClick={confirm} className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider w-full">
-              Confirm Unsubscribe
+              {t("unsubscribe.confirm")}
             </Button>
           </>
         )}
@@ -79,31 +74,31 @@ const Unsubscribe = () => {
         {state === "submitting" && (
           <>
             <Loader2 className="h-8 w-8 mx-auto animate-spin text-maple mb-3" />
-            <p className="text-muted-foreground">Processing…</p>
+            <p className="text-muted-foreground">{t("unsubscribe.processing")}</p>
           </>
         )}
 
         {state === "done" && (
           <>
             <CheckCircle2 className="h-10 w-10 mx-auto text-maple mb-3" />
-            <h1 className="font-display text-2xl uppercase tracking-wide mb-2">You're Unsubscribed</h1>
-            <p className="text-muted-foreground">You won't receive any more notifications at this address.</p>
+            <h1 className="font-display text-2xl uppercase tracking-wide mb-2">{t("unsubscribe.doneTitle")}</h1>
+            <p className="text-muted-foreground">{t("unsubscribe.doneBody")}</p>
           </>
         )}
 
         {state === "already" && (
           <>
             <CheckCircle2 className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-            <h1 className="font-display text-2xl uppercase tracking-wide mb-2">Already Unsubscribed</h1>
-            <p className="text-muted-foreground">This address has already been removed.</p>
+            <h1 className="font-display text-2xl uppercase tracking-wide mb-2">{t("unsubscribe.alreadyTitle")}</h1>
+            <p className="text-muted-foreground">{t("unsubscribe.alreadyBody")}</p>
           </>
         )}
 
         {(state === "invalid" || state === "error") && (
           <>
             <AlertCircle className="h-10 w-10 mx-auto text-destructive mb-3" />
-            <h1 className="font-display text-2xl uppercase tracking-wide mb-2">Link Invalid</h1>
-            <p className="text-muted-foreground">{errorMsg || "This unsubscribe link is invalid or expired."}</p>
+            <h1 className="font-display text-2xl uppercase tracking-wide mb-2">{t("unsubscribe.invalidTitle")}</h1>
+            <p className="text-muted-foreground">{errorMsg || t("unsubscribe.invalidBody")}</p>
           </>
         )}
       </div>
