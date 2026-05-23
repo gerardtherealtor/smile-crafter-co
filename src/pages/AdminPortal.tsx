@@ -336,7 +336,7 @@ const EmployeeWeekDialog = ({
       setLoading(true);
       const { data } = await supabase
         .from("time_entries")
-        .select("id,work_date,clock_in,clock_out,hours,notes,job_id")
+        .select("id,work_date,clock_in,clock_out,hours,notes,notes_en,job_id")
         .eq("user_id", profile.id)
         .gte("work_date", monday)
         .lte("work_date", sunday)
