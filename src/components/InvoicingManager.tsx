@@ -290,7 +290,7 @@ export const InvoicingManager = ({
         const hay =
           `${g.job.name} ${g.job.address ?? ""}`.toLowerCase() + " " +
           Array.from(g.workerIds).map((id) => profileName(id)).join(" ").toLowerCase() + " " +
-          g.entries.map((e) => e.notes ?? "").join(" ").toLowerCase();
+          g.entries.map((e) => `${e.notes_en ?? ""} ${e.notes ?? ""}`).join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
