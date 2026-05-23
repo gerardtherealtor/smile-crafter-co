@@ -311,6 +311,7 @@ interface DetailEntry {
   clock_out: string;
   hours: number;
   notes: string | null;
+  notes_en: string | null;
   job_id: string | null;
 }
 
@@ -335,7 +336,7 @@ const EmployeeWeekDialog = ({
       setLoading(true);
       const { data } = await supabase
         .from("time_entries")
-        .select("id,work_date,clock_in,clock_out,hours,notes,job_id")
+        .select("id,work_date,clock_in,clock_out,hours,notes,notes_en,job_id")
         .eq("user_id", profile.id)
         .gte("work_date", monday)
         .lte("work_date", sunday)
@@ -413,7 +414,7 @@ const EmployeeWeekDialog = ({
                           {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {formatHours(Number(e.hours))} {t("common.hours")}
                         </span>
                       </div>
-                      {e.notes && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes}</div>}
+                      {(e.notes_en || e.notes) && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes_en || e.notes}</div>}
                     </div>
                   ))}
                 </div>

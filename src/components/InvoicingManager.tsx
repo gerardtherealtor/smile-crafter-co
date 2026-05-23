@@ -80,7 +80,7 @@ interface Job { id: string; name: string; address: string | null; is_active: boo
 interface Profile { id: string; full_name: string; email: string }
 interface TEntry {
   id: string; user_id: string; job_id: string | null; work_date: string;
-  clock_in: string; clock_out: string; hours: number; notes: string | null;
+  clock_in: string; clock_out: string; hours: number; notes: string | null; notes_en: string | null;
 }
 interface InvoiceRecord {
   id: string; job_id: string; week_start: string; week_end: string;
@@ -148,7 +148,7 @@ export const InvoicingManager = ({
     const [e, inv] = await Promise.all([
       supabase
         .from("time_entries")
-        .select("id,user_id,job_id,work_date,clock_in,clock_out,hours,notes")
+        .select("id,user_id,job_id,work_date,clock_in,clock_out,hours,notes,notes_en")
         .order("work_date", { ascending: false }),
       supabase
         .from("job_invoices")
@@ -290,7 +290,7 @@ export const InvoicingManager = ({
         const hay =
           `${g.job.name} ${g.job.address ?? ""}`.toLowerCase() + " " +
           Array.from(g.workerIds).map((id) => profileName(id)).join(" ").toLowerCase() + " " +
-          g.entries.map((e) => e.notes ?? "").join(" ").toLowerCase();
+          g.entries.map((e) => `${e.notes_en ?? ""} ${e.notes ?? ""}`).join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -478,7 +478,7 @@ export const InvoicingManager = ({
     const lines: string[] = [];
     const sortedDates = Array.from(byDate.entries()).sort(([a], [b]) => a.localeCompare(b));
     for (const [date, items] of sortedDates) {
-      const taskNotes = Array.from(new Set(items.map((i) => i.notes?.trim()).filter(Boolean))) as string[];
+      const taskNotes = Array.from(new Set(items.map((i) => (i.notes_en ?? i.notes)?.trim()).filter(Boolean))) as string[];
       const crew = Array.from(new Set(items.map((i) => profileName(i.user_id)))).join(", ");
       const dayHours = items.reduce((s, i) => s + Number(i.hours), 0);
       const task = taskNotes.length ? ` — ${taskNotes.join("; ")}` : "";
@@ -1058,9 +1058,9 @@ export const InvoicingManager = ({
                                   <span className="text-muted-foreground ml-2">
                                     {formatTime12(it.clock_in)} – {formatTime12(it.clock_out)}
                                   </span>
-                                  {it.notes && (
+                                  {(it.notes_en || it.notes) && (
                                     <div className="text-xs text-muted-foreground mt-0.5">
-                                      “{it.notes}”
+                                      “{it.notes_en || it.notes}”
                                     </div>
                                   )}
                                 </div>

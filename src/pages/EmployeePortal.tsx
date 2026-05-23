@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PortalLayout } from "@/components/PortalLayout";
@@ -108,7 +109,23 @@ const EmployeePortal = () => {
       }
     }
     setSaving(true);
-    const rows = valid.map((s) => ({
+    // If the employee is using Spanish, translate notes to English for admin reports.
+    const lang = (i18n.language || "en").toLowerCase();
+    const translateNotes = async (txt: string): Promise<string | null> => {
+      const trimmed = txt.trim();
+      if (!trimmed) return null;
+      if (lang.startsWith("en")) return trimmed;
+      try {
+        const { data, error } = await supabase.functions.invoke("translate-text", {
+          body: { text: trimmed, sourceLang: lang },
+        });
+        if (error) return trimmed;
+        return (data?.translated as string) || trimmed;
+      } catch {
+        return trimmed;
+      }
+    };
+    const rows = await Promise.all(valid.map(async (s) => ({
       user_id: user.id,
       job_id: s.jobId || null,
       work_date: date,
@@ -117,7 +134,8 @@ const EmployeePortal = () => {
       break_minutes: 0,
       hours: shiftHours(s),
       notes: s.notes.trim() || null,
-    }));
+      notes_en: await translateNotes(s.notes),
+    })));
     // Replace today's existing entries with the new set
     const { error: delError } = await supabase
       .from("time_entries")
@@ -153,7 +171,7 @@ const EmployeePortal = () => {
             clockOut: formatTime12(`${last.clockOut}:00`),
             breakMinutes: 0,
             hours: liveHours.toFixed(2),
-            notes: valid.map((s, i) => s.notes.trim() ? `Job ${i + 1}: ${s.notes.trim()}` : null).filter(Boolean).join(" | ") || undefined,
+            notes: rows.map((r, i) => r.notes_en ? `Job ${i + 1}: ${r.notes_en}` : null).filter(Boolean).join(" | ") || undefined,
           },
         },
       }).catch(() => {});
