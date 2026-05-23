@@ -1,9 +1,11 @@
 import { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, HardHat, Shield } from "lucide-react";
 import logo from "@/assets/logo.png";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 export const PortalLayout = ({
   children,
@@ -15,6 +17,7 @@ export const PortalLayout = ({
   subtitle?: string;
 }) => {
   const { signOut, role } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -25,8 +28,8 @@ export const PortalLayout = ({
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
-        <div className="container flex items-center justify-between py-3">
-          <Link to="/" className="flex items-center group">
+        <div className="container flex items-center justify-between py-3 gap-2">
+          <Link to="/" className="flex items-center group shrink-0">
             <img
               src={logo}
               alt="Dwayne Noe Construction"
@@ -35,21 +38,22 @@ export const PortalLayout = ({
               className="h-20 w-auto transition-transform group-hover:scale-105 [filter:brightness(0)_invert(1)]"
             />
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-xs font-medium">
               {role === "admin" ? (
-                <><Shield className="h-3 w-3 text-maple" /> Admin</>
+                <><Shield className="h-3 w-3 text-maple" /> {t("portal.admin")}</>
               ) : (
-                <><HardHat className="h-3 w-3 text-maple" /> Crew</>
+                <><HardHat className="h-3 w-3 text-maple" /> {t("portal.crew")}</>
               )}
             </span>
+            <LanguageToggle variant="compact" />
             {role === "admin" && (
               <Button asChild variant="ghost" size="sm" className="font-display tracking-wider hidden sm:inline-flex">
-                <Link to="/admin">Admin</Link>
+                <Link to="/admin">{t("portal.admin")}</Link>
               </Button>
             )}
             <Button asChild variant="ghost" size="sm" className="font-display tracking-wider">
-              <Link to="/employee">My Time</Link>
+              <Link to="/employee">{t("portal.myTime")}</Link>
             </Button>
             <Button
               onClick={handleLogout}
@@ -58,7 +62,7 @@ export const PortalLayout = ({
               className="border-maple/40 bg-maple/10 text-maple hover:bg-maple hover:text-maple-foreground font-display tracking-wider"
             >
               <LogOut className="h-4 w-4 mr-1.5" />
-              Sign Out
+              {t("portal.signOut")}
             </Button>
           </div>
         </div>

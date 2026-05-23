@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { MovingFleet } from "@/components/MovingFleet";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import heroDusk from "@/assets/hero-trucks.jpg";
 import heroTwilight from "@/assets/hero-twilight.jpg";
@@ -11,17 +13,18 @@ import logo from "@/assets/logo.png";
 import { Clock, ShieldCheck, FileText, Smartphone } from "lucide-react";
 
 const MOODS = [
-  { id: "dusk", label: "Dusk", src: heroDusk },
-  { id: "twilight", label: "Twilight", src: heroTwilight },
-  { id: "bluehour", label: "Blue Hour", src: heroBlueHour },
-  { id: "night", label: "Midnight", src: heroNight },
+  { id: "dusk", src: heroDusk },
+  { id: "twilight", src: heroTwilight },
+  { id: "bluehour", src: heroBlueHour },
+  { id: "night", src: heroNight },
 ] as const;
 type MoodId = typeof MOODS[number]["id"];
 
 const Index = () => {
+  const { t } = useTranslation();
   const { user, role } = useAuth();
   const ctaTo = user ? (role === "admin" ? "/admin" : "/employee") : "/auth";
-  const ctaLabel = user ? "Open Portal" : "Sign In to Portal";
+  const ctaLabel = user ? t("home.openPortal") : t("home.signInToPortal");
   const [mood, setMood] = useState<MoodId>("dusk");
 
   useEffect(() => {
@@ -36,9 +39,15 @@ const Index = () => {
 
   const heroSrc = MOODS.find((m) => m.id === mood)?.src ?? heroDusk;
 
+  const features = [
+    { icon: Smartphone, key: "mobile" as const },
+    { icon: Clock, key: "fast" as const },
+    { icon: FileText, key: "weekly" as const },
+    { icon: ShieldCheck, key: "secure" as const },
+  ];
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
       <header className="absolute top-0 inset-x-0 z-20">
         <div className="container flex items-center justify-between py-5">
           <Link to="/" className="flex items-center group">
@@ -51,6 +60,7 @@ const Index = () => {
             />
           </Link>
           <div className="flex items-center gap-2">
+            <LanguageToggle variant="compact" />
             <Button asChild size="sm" className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
               <Link to={ctaTo}>{ctaLabel}</Link>
             </Button>
@@ -58,7 +68,6 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Hero */}
       <section className="relative min-h-[80vh] flex items-center">
         <img
           src={heroSrc}
@@ -69,7 +78,6 @@ const Index = () => {
         />
         <div className="absolute inset-0" style={{ background: "var(--gradient-hero)" }} />
 
-        {/* Mood picker */}
         <div className="absolute bottom-4 right-4 z-20 flex flex-wrap gap-1.5 p-1.5 rounded-full bg-black/50 backdrop-blur border border-white/10">
           {MOODS.map((m) => (
             <button
@@ -82,7 +90,7 @@ const Index = () => {
                   : "text-foreground/70 hover:text-foreground hover:bg-white/5"
               }`}
             >
-              {m.label}
+              {t(`home.moodLabels.${m.id}`)}
             </button>
           ))}
         </div>
@@ -91,34 +99,31 @@ const Index = () => {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-maple/40 bg-black/40 text-maple text-xs tracking-[0.2em] uppercase mb-6">
               <span className="h-1.5 w-1.5 rounded-full bg-maple animate-pulse" />
-              Crew Time Portal
+              {t("home.chip")}
             </div>
             <h1 className="font-display text-5xl sm:text-6xl md:text-7xl uppercase leading-[0.95] mb-5">
-              Built Hard.<br />
-              <span className="text-maple">Tracked Easy.</span>
+              {t("home.h1Line1")}<br />
+              <span className="text-maple">{t("home.h1Line2")}</span>
             </h1>
             <p className="text-lg text-foreground/80 max-w-xl mb-8">
-              Daily timesheets in under 30 seconds. Friday tallies regular &
-              overtime hours automatically and emails the report to the office.
+              {t("home.heroBody")}
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Button asChild size="lg" className="bg-primary hover:bg-primary/90 font-display tracking-wider text-base">
                 <Link to={ctaTo}>{ctaLabel}</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="border-maple/50 text-maple hover:bg-maple/10 font-display tracking-wider">
-                <a href="#how">How It Works</a>
+                <a href="#how">{t("home.howItWorks")}</a>
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Animated fleet at the bottom of hero */}
         <div className="absolute inset-x-0 bottom-0">
           <MovingFleet />
         </div>
       </section>
 
-      {/* Wood plank divider */}
       <div
         className="h-3 w-full"
         style={{
@@ -128,36 +133,29 @@ const Index = () => {
         }}
       />
 
-      {/* Features */}
       <section id="how" className="container py-20">
         <h2 className="font-display text-3xl sm:text-4xl uppercase mb-12 text-center">
-          Designed For The <span className="text-maple">Job Site</span>
+          {t("home.sectionTitlePre")} <span className="text-maple">{t("home.sectionTitlePost")}</span>
         </h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {[
-            { icon: Smartphone, title: "Mobile First", body: "Works on any phone. Big buttons, fast entry, no fuss." },
-            { icon: Clock, title: "30-Second Entry", body: "Pick a job, tap clock in / out, done. Hours auto-calculate." },
-            { icon: FileText, title: "Auto Weekly Tally", body: "Friday at 6 PM, regular hours up to 40 plus overtime." },
-            { icon: ShieldCheck, title: "Secure Access", body: "Each crew member only sees their own week. Admins see all." },
-          ].map(({ icon: Icon, title, body }) => (
+          {features.map(({ icon: Icon, key }) => (
             <div
-              key={title}
+              key={key}
               className="rounded-xl border border-border bg-card/60 backdrop-blur p-6 hover:border-maple/40 transition-colors shadow-deep"
             >
               <div className="h-11 w-11 rounded-lg bg-gradient-maple grid place-items-center mb-4 shadow-maple">
                 <Icon className="h-5 w-5 text-maple-foreground" />
               </div>
-              <h3 className="font-display text-lg uppercase tracking-wide mb-2">{title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
+              <h3 className="font-display text-lg uppercase tracking-wide mb-2">{t(`home.features.${key}.title`)}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{t(`home.features.${key}.body`)}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="border-t border-border bg-black/40">
         <div className="container py-8 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Dwayne Noe Construction · Crew Time Portal
+          © {new Date().getFullYear()} Dwayne Noe Construction · {t("home.footer")}
         </div>
       </footer>
     </div>
