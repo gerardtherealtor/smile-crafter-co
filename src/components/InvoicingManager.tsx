@@ -1058,9 +1058,9 @@ export const InvoicingManager = ({
                                   <span className="text-muted-foreground ml-2">
                                     {formatTime12(it.clock_in)} – {formatTime12(it.clock_out)}
                                   </span>
-                                  {it.notes && (
+                                  {(it.notes_en || it.notes) && (
                                     <div className="text-xs text-muted-foreground mt-0.5">
-                                      “{it.notes}”
+                                      “{it.notes_en || it.notes}”
                                     </div>
                                   )}
                                 </div>
