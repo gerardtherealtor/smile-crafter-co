@@ -192,6 +192,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          name_en: string | null
         }
         Insert: {
           address?: string | null
@@ -199,6 +200,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          name_en?: string | null
         }
         Update: {
           address?: string | null
@@ -206,6 +208,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          name_en?: string | null
         }
         Relationships: []
       }
@@ -303,6 +306,7 @@ export type Database = {
           id: string
           job_id: string | null
           notes: string | null
+          notes_en: string | null
           updated_at: string
           user_id: string
           work_date: string
@@ -316,6 +320,7 @@ export type Database = {
           id?: string
           job_id?: string | null
           notes?: string | null
+          notes_en?: string | null
           updated_at?: string
           user_id: string
           work_date: string
@@ -329,6 +334,7 @@ export type Database = {
           id?: string
           job_id?: string | null
           notes?: string | null
+          notes_en?: string | null
           updated_at?: string
           user_id?: string
           work_date?: string
