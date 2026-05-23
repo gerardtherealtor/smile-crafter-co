@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PortalLayout } from "@/components/PortalLayout";
@@ -24,6 +25,7 @@ interface Entry {
 }
 
 const EmployeePortal = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -96,12 +98,12 @@ const EmployeePortal = () => {
     if (!user) return;
     const valid = shifts.filter((s) => s.clockIn && s.clockOut);
     if (valid.length === 0) {
-      toast.error("Add at least one clock in / clock out.");
+      toast.error(t("employee.addOne"));
       return;
     }
     for (const s of valid) {
       if (shiftHours(s) <= 0) {
-        toast.error("Clock out must be after clock in for every shift.");
+        toast.error(t("employee.afterIn"));
         return;
       }
     }
@@ -132,7 +134,7 @@ const EmployeePortal = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Saved");
+      toast.success(t("employee.saved"));
       // Notify admins once with summary
       const jobNames = valid
         .map((s) => jobs.find((j) => j.id === s.jobId)?.name ?? "—")
@@ -178,34 +180,34 @@ const EmployeePortal = () => {
       }));
 
   const exportCsv = () => {
-    if (entries.length === 0) { toast.error("Nothing to export this week."); return; }
+    if (entries.length === 0) { toast.error(t("employee.nothingToExport")); return; }
     const rows = buildRows();
     const esc = (v: string | number) => {
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ["Date", "Clock In", "Clock Out", "Break (min)", "Job", "Notes", "Hours"];
+    const header = [t("employee.date"), t("employee.clockIn"), t("employee.clockOut"), "Break (min)", t("employee.jobSite"), t("common.notes"), t("employee.total")];
     const lines = [
-      `Employee,${esc(employeeName)}`,
-      `Week,${esc(weekLabel)}`,
+      `${t("employee.employeeLabel")},${esc(employeeName)}`,
+      `${t("employee.weekLabel")},${esc(weekLabel)}`,
       "",
       header.join(","),
       ...rows.map((r) => [r.date, r.clockIn, r.clockOut, r.breakMin, r.job, r.notes, r.hours.toFixed(2)].map(esc).join(",")),
       "",
-      `,,,,,Regular,${totals.regular.toFixed(2)}`,
-      `,,,,,Overtime,${totals.overtime.toFixed(2)}`,
-      `,,,,,Total,${totals.total.toFixed(2)}`,
+      `,,,,,${t("employee.regular")},${totals.regular.toFixed(2)}`,
+      `,,,,,${t("employee.overtime")},${totals.overtime.toFixed(2)}`,
+      `,,,,,${t("employee.total")},${totals.total.toFixed(2)}`,
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = `${fileBase}.csv`; a.click();
     URL.revokeObjectURL(url);
-    toast.success("CSV downloaded");
+    toast.success(t("employee.csvDownloaded"));
   };
 
   const exportPdf = () => {
-    if (entries.length === 0) { toast.error("Nothing to export this week."); return; }
+    if (entries.length === 0) { toast.error(t("employee.nothingToExport")); return; }
     const rows = buildRows();
     const doc = new jsPDF({ unit: "pt", format: "letter" });
     const pageW = doc.internal.pageSize.getWidth();
@@ -217,20 +219,20 @@ const EmployeePortal = () => {
     doc.text("Dwayne Noe Construction", margin, y);
     y += 20;
     doc.setFontSize(12);
-    doc.text("Weekly Timesheet", margin, y);
+    doc.text(t("employee.weeklyTimesheet"), margin, y);
     y += 18;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`Employee: ${employeeName}`, margin, y); y += 14;
-    doc.text(`Week: ${weekLabel}`, margin, y); y += 18;
+    doc.text(`${t("employee.employeeLabel")}: ${employeeName}`, margin, y); y += 14;
+    doc.text(`${t("employee.weekLabel")}: ${weekLabel}`, margin, y); y += 18;
 
     const cols = [
-      { label: "Date", w: 100 },
-      { label: "In", w: 70 },
-      { label: "Out", w: 70 },
+      { label: t("employee.date"), w: 100 },
+      { label: t("employee.clockIn"), w: 70 },
+      { label: t("employee.clockOut"), w: 70 },
       { label: "Brk", w: 35 },
-      { label: "Job", w: 130 },
-      { label: "Hrs", w: 40 },
+      { label: t("employee.jobSite"), w: 130 },
+      { label: t("common.hours"), w: 40 },
     ];
     doc.setFont("helvetica", "bold");
     doc.setFillColor(230, 230, 235);
@@ -251,7 +253,7 @@ const EmployeePortal = () => {
       });
       y += 16;
       if (r.notes) {
-        const noteLines = doc.splitTextToSize(`Note: ${r.notes}`, pageW - margin * 2 - 8);
+        const noteLines = doc.splitTextToSize(`${t("common.notes")}: ${r.notes}`, pageW - margin * 2 - 8);
         doc.setTextColor(90); doc.setFontSize(9);
         noteLines.forEach((ln: string) => {
           if (y > 740) { doc.addPage(); y = margin; }
@@ -268,18 +270,18 @@ const EmployeePortal = () => {
     if (y > 680) { doc.addPage(); y = margin; }
     y += 14;
     doc.setFont("helvetica", "bold");
-    doc.text(`Regular: ${totals.regular.toFixed(2)} hrs`, margin, y); y += 14;
-    doc.text(`Overtime: ${totals.overtime.toFixed(2)} hrs`, margin, y); y += 14;
-    doc.text(`Total: ${totals.total.toFixed(2)} hrs`, margin, y);
+    doc.text(`${t("employee.regular")}: ${totals.regular.toFixed(2)} ${t("common.hours")}`, margin, y); y += 14;
+    doc.text(`${t("employee.overtime")}: ${totals.overtime.toFixed(2)} ${t("common.hours")}`, margin, y); y += 14;
+    doc.text(`${t("employee.total")}: ${totals.total.toFixed(2)} ${t("common.hours")}`, margin, y);
 
     doc.save(`${fileBase}.pdf`);
-    toast.success("PDF downloaded");
+    toast.success(t("employee.pdfDownloaded"));
   };
 
   return (
     <PortalLayout
-      title="My Time"
-      subtitle={`Week of ${formatDate(monday)} – ${formatDate(sunday)}`}
+      title={t("employee.title")}
+      subtitle={t("employee.subtitle", { range: `${formatDate(monday)} – ${formatDate(sunday)}` })}
     >
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Entry form */}
@@ -289,12 +291,12 @@ const EmployeePortal = () => {
         >
           <div className="flex items-center gap-2 mb-5">
             <Clock className="h-5 w-5 text-maple" />
-            <h2 className="font-display text-xl uppercase tracking-wide">Today's Entry</h2>
+            <h2 className="font-display text-xl uppercase tracking-wide">{t("employee.todaysEntry")}</h2>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
-              <Label>Date</Label>
+              <Label>{t("employee.date")}</Label>
               <Input
                 type="date"
                 value={date}
@@ -305,7 +307,7 @@ const EmployeePortal = () => {
               <div className="text-xs text-muted-foreground mt-1">{formatDate(date)}</div>
             </div>
             <div className="rounded-lg bg-gradient-maple/10 border border-maple/30 p-3 flex flex-col justify-center">
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">Total Today</div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">{t("employee.totalToday")}</div>
               <div className="font-display text-3xl text-maple">{formatHours(liveHours)}</div>
             </div>
           </div>
@@ -315,11 +317,11 @@ const EmployeePortal = () => {
               <div key={i} className="rounded-lg border border-border bg-background/40 p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="font-display text-sm uppercase tracking-widest text-muted-foreground">
-                    Shift {i + 1}
+                    {t("employee.shift", { n: i + 1 })}
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-sm text-maple font-display">
-                      {formatHours(shiftHours(s))} hrs
+                      {formatHours(shiftHours(s))} {t("common.hours")}
                     </div>
                     {shifts.length > 1 && (
                       <Button type="button" variant="ghost" size="sm"
@@ -332,37 +334,37 @@ const EmployeePortal = () => {
                 </div>
                 <div className="grid sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-3">
-                    <Label>Job Site</Label>
+                    <Label>{t("employee.jobSite")}</Label>
                     <select
                       value={s.jobId}
                       onChange={(e) => updateShift(i, { jobId: e.target.value })}
                       className="mt-1.5 flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:1em_1em]"
                       style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.5'><polyline points='6 9 12 15 18 9'/></svg>\")", paddingRight: "2.25rem" }}
                     >
-                      <option value="" disabled>Pick a job</option>
+                      <option value="" disabled>{t("employee.pickJob")}</option>
                       {jobs.map((j) => (
                         <option key={j.id} value={j.id}>{j.name}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <Label>Clock In</Label>
+                    <Label>{t("employee.clockIn")}</Label>
                     <Input type="time" value={s.clockIn}
                            onChange={(e) => updateShift(i, { clockIn: e.target.value })}
                            className="mt-1.5 text-lg" required />
                   </div>
                   <div>
-                    <Label>Clock Out</Label>
+                    <Label>{t("employee.clockOut")}</Label>
                     <Input type="time" value={s.clockOut}
                            onChange={(e) => updateShift(i, { clockOut: e.target.value })}
                            className="mt-1.5 text-lg" required />
                   </div>
                   <div className="sm:col-span-3">
-                    <Label>Notes for this job (optional)</Label>
+                    <Label>{t("employee.notesForJob")}</Label>
                     <Textarea value={s.notes}
                               onChange={(e) => updateShift(i, { notes: e.target.value })}
                               maxLength={500}
-                              placeholder={`What did you work on at job ${i + 1}?`}
+                              placeholder={t("employee.notesPlaceholder", { n: i + 1 })}
                               className="mt-1.5" rows={2} />
                   </div>
                 </div>
@@ -373,7 +375,7 @@ const EmployeePortal = () => {
           {shifts.length < 5 && (
             <Button type="button" variant="outline" onClick={addShift}
                     className="w-full mt-4 font-display tracking-wider">
-              <Plus className="h-4 w-4 mr-2" /> Add Another Job ({shifts.length}/5)
+              <Plus className="h-4 w-4 mr-2" /> {t("employee.addAnother", { n: shifts.length })}
             </Button>
           )}
 
@@ -381,7 +383,7 @@ const EmployeePortal = () => {
           <Button type="submit" disabled={saving}
                   className="w-full mt-5 h-12 bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider text-base">
             <Save className="h-5 w-5 mr-2" />
-            {saving ? "Saving…" : "Save Today's Hours"}
+            {saving ? t("employee.saving") : t("employee.saveHours")}
           </Button>
         </form>
 
@@ -390,29 +392,29 @@ const EmployeePortal = () => {
           <div className="rounded-xl border border-border bg-card p-5 shadow-deep">
             <div className="flex items-center gap-2 mb-4">
               <Calendar className="h-5 w-5 text-maple" />
-              <h2 className="font-display text-xl uppercase tracking-wide">This Week</h2>
+              <h2 className="font-display text-xl uppercase tracking-wide">{t("employee.thisWeek")}</h2>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <Stat label="Total" value={formatHours(totals.total)} />
-              <Stat label="Regular" value={formatHours(totals.regular)} />
-              <Stat label="Overtime" value={formatHours(totals.overtime)} accent />
+              <Stat label={t("employee.total")} value={formatHours(totals.total)} />
+              <Stat label={t("employee.regular")} value={formatHours(totals.regular)} />
+              <Stat label={t("employee.overtime")} value={formatHours(totals.overtime)} accent />
             </div>
             <div className="grid grid-cols-2 gap-2 mt-4">
               <Button type="button" variant="outline" onClick={exportCsv} disabled={entries.length === 0} className="font-display tracking-wider">
-                <FileDown className="h-4 w-4 mr-1.5" /> CSV
+                <FileDown className="h-4 w-4 mr-1.5" /> {t("employee.csv")}
               </Button>
               <Button type="button" variant="outline" onClick={exportPdf} disabled={entries.length === 0} className="font-display tracking-wider">
-                <FileText className="h-4 w-4 mr-1.5" /> PDF
+                <FileText className="h-4 w-4 mr-1.5" /> {t("employee.pdf")}
               </Button>
             </div>
           </div>
 
           <div className="rounded-xl border border-border bg-card p-5 shadow-deep">
-            <h3 className="font-display text-sm uppercase tracking-widest text-muted-foreground mb-3">Daily Log</h3>
+            <h3 className="font-display text-sm uppercase tracking-widest text-muted-foreground mb-3">{t("employee.dailyLog")}</h3>
             {loading ? (
-              <div className="text-sm text-muted-foreground">Loading…</div>
+              <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
             ) : entries.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No hours entered yet this week.</div>
+              <div className="text-sm text-muted-foreground">{t("employee.nothingThisWeek")}</div>
             ) : (
               <ul className="divide-y divide-border">
                 {entries.map((e) => {
