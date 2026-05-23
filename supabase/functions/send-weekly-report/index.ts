@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     // 2. Load time entries for the week
     const { data: entries, error: eErr } = await supabase
       .from("time_entries")
-      .select("user_id, work_date, clock_in, clock_out, hours, job_id, notes")
+      .select("user_id, work_date, clock_in, clock_out, hours, job_id, notes, notes_en")
       .gte("work_date", monday)
       .lte("work_date", sunday)
       .order("work_date");
