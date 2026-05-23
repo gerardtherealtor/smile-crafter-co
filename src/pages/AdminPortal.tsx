@@ -311,6 +311,7 @@ interface DetailEntry {
   clock_out: string;
   hours: number;
   notes: string | null;
+  notes_en: string | null;
   job_id: string | null;
 }
 
