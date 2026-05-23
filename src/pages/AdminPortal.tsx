@@ -477,10 +477,10 @@ const RosterManager = ({
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-card p-4 shadow-deep">
         <p className="text-sm text-muted-foreground mb-3">
-          Click a name to view their weekly hours and job history. Each employee still needs to sign up at <span className="text-foreground font-mono">/auth</span> using their own email + password to clock in.
+          {t("admin.roster.helper")}
         </p>
         <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-3">
-          <Input placeholder="Last, First" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
+          <Input placeholder={t("admin.roster.placeholder")} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
           <Button type="submit" disabled={busy} className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
             <Plus className="h-4 w-4 mr-1.5" /> Add
           </Button>
