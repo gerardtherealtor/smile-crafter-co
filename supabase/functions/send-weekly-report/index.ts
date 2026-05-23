@@ -222,9 +222,10 @@ Deno.serve(async (req) => {
         doc.text(jobName(ent.job_id), 280, y);
         doc.text(`${fmtHours(Number(ent.hours))} hr`, 540, y, { align: "right" });
         y += 12;
-        if (ent.notes) {
+        const noteText = ent.notes_en || ent.notes;
+        if (noteText) {
           doc.setTextColor(120, 120, 120);
-          doc.text(`  ${ent.notes.slice(0, 100)}`, 50, y);
+          doc.text(`  ${noteText.slice(0, 100)}`, 50, y);
           doc.setTextColor(20, 20, 20);
           y += 12;
         }
