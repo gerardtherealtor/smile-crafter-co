@@ -148,7 +148,7 @@ export const InvoicingManager = ({
     const [e, inv] = await Promise.all([
       supabase
         .from("time_entries")
-        .select("id,user_id,job_id,work_date,clock_in,clock_out,hours,notes")
+        .select("id,user_id,job_id,work_date,clock_in,clock_out,hours,notes,notes_en")
         .order("work_date", { ascending: false }),
       supabase
         .from("job_invoices")
