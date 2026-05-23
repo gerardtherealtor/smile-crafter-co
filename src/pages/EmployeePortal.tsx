@@ -171,7 +171,7 @@ const EmployeePortal = () => {
             clockOut: formatTime12(`${last.clockOut}:00`),
             breakMinutes: 0,
             hours: liveHours.toFixed(2),
-            notes: valid.map((s, i) => s.notes.trim() ? `Job ${i + 1}: ${s.notes.trim()}` : null).filter(Boolean).join(" | ") || undefined,
+            notes: rows.map((r, i) => r.notes_en ? `Job ${i + 1}: ${r.notes_en}` : null).filter(Boolean).join(" | ") || undefined,
           },
         },
       }).catch(() => {});
