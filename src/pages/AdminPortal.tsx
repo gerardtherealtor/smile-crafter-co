@@ -414,7 +414,7 @@ const EmployeeWeekDialog = ({
                           {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {formatHours(Number(e.hours))} {t("common.hours")}
                         </span>
                       </div>
-                      {e.notes && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes}</div>}
+                      {(e.notes_en || e.notes) && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes_en || e.notes}</div>}
                     </div>
                   ))}
                 </div>
