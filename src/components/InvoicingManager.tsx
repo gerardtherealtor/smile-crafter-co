@@ -478,7 +478,7 @@ export const InvoicingManager = ({
     const lines: string[] = [];
     const sortedDates = Array.from(byDate.entries()).sort(([a], [b]) => a.localeCompare(b));
     for (const [date, items] of sortedDates) {
-      const taskNotes = Array.from(new Set(items.map((i) => i.notes?.trim()).filter(Boolean))) as string[];
+      const taskNotes = Array.from(new Set(items.map((i) => (i.notes_en ?? i.notes)?.trim()).filter(Boolean))) as string[];
       const crew = Array.from(new Set(items.map((i) => profileName(i.user_id)))).join(", ");
       const dayHours = items.reduce((s, i) => s + Number(i.hours), 0);
       const task = taskNotes.length ? ` — ${taskNotes.join("; ")}` : "";
