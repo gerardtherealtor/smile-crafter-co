@@ -48,7 +48,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="absolute top-0 inset-x-0 z-20">
+      <header
+        className="absolute top-0 inset-x-0 z-20"
+        style={{ paddingTop: "max(env(safe-area-inset-top), 0px)" }}
+      >
         <div className="container flex items-center justify-between py-5">
           <Link to="/" className="flex items-center group">
             <img
