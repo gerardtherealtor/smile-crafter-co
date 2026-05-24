@@ -92,6 +92,27 @@ export const SupportTicketButton = () => {
         screenshotUrl = signed?.signedUrl;
       }
 
+      // If submitting in Spanish, translate to English for the admin email.
+      const { i18n } = await import("@/i18n");
+      let descForAdmin = desc;
+      let areaForAdmin = area.trim() || null;
+      if (i18n.language?.startsWith("es")) {
+        try {
+          const { data: tDesc } = await supabase.functions.invoke("translate-text", {
+            body: { text: desc },
+          });
+          if (tDesc?.translated) descForAdmin = tDesc.translated;
+          if (areaForAdmin) {
+            const { data: tArea } = await supabase.functions.invoke("translate-text", {
+              body: { text: areaForAdmin },
+            });
+            if (tArea?.translated) areaForAdmin = tArea.translated;
+          }
+        } catch {
+          // Fall back to original text if translation fails.
+        }
+      }
+
       // Fire-and-forget email to admins.
       supabase.functions
         .invoke("notify-admins", {
@@ -101,8 +122,8 @@ export const SupportTicketButton = () => {
             templateData: {
               userName,
               userEmail: user.email,
-              functionArea: area.trim() || null,
-              description: desc,
+              functionArea: areaForAdmin,
+              description: descForAdmin,
               screenshotUrl,
               submittedAt: new Date().toLocaleString(),
             },
