@@ -27,7 +27,10 @@ export const PortalLayout = ({
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
+      <header
+        className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border"
+        style={{ paddingTop: "max(env(safe-area-inset-top), 0px)" }}
+      >
         <div className="container flex items-center justify-between py-3 gap-2">
           <Link to="/" className="flex items-center group shrink-0">
             <img
