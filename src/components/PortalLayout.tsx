@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, HardHat, Shield } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { SupportTicketButton } from "@/components/SupportTicketButton";
 
 export const PortalLayout = ({
   children,
@@ -78,6 +79,7 @@ export const PortalLayout = ({
         </div>
         {children}
       </div>
+      <SupportTicketButton />
     </div>
   );
 };
