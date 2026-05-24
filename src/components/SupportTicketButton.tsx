@@ -93,7 +93,7 @@ export const SupportTicketButton = () => {
       }
 
       // If submitting in Spanish, translate to English for the admin email.
-      const { i18n } = await import("@/i18n");
+      const { default: i18n } = await import("@/i18n");
       let descForAdmin = desc;
       let areaForAdmin = area.trim() || null;
       if (i18n.language?.startsWith("es")) {
