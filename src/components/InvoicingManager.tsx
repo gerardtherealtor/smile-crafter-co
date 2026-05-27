@@ -1285,7 +1285,7 @@ export const InvoicingManager = ({
                 <Copy className="h-4 w-4" /> Copy CSV
               </Button>
             )}
-            {preview && typeof navigator !== "undefined" && (navigator as unknown as { canShare?: (data: unknown) => boolean }).canShare && (navigator as unknown as { canShare?: (data: unknown) => boolean }).canShare!({ files: [new File([], "test.csv", { type: "text/csv" })] }) && (
+            {preview && typeof navigator !== "undefined" && "share" in navigator && (
               <Button
                 variant="secondary"
                 onClick={async () => {
