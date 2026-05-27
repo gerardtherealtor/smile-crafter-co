@@ -18,7 +18,7 @@ import {
 } from "@/lib/time";
 import {
   AlertTriangle, Archive, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight,
-  Download, FileCheck2, History, Loader2, Search, Send, Undo2, X,
+  Copy, Download, FileCheck2, History, Loader2, Search, Send, Share2, Undo2, X,
 } from "lucide-react";
 
 type AuditAction =
@@ -74,6 +74,27 @@ const downloadCsv = (filename: string, rows: (string | number)[][]) => {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return csv;
+};
+
+const copyCsv = async (rows: (string | number)[][]) => {
+  const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
+  await navigator.clipboard.writeText(csv);
+};
+
+const shareCsv = async (filename: string, rows: (string | number)[][]) => {
+  const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const file = new File([blob], filename, { type: "text/csv" });
+  const canShare = (navigator as unknown as { canShare?: (data: unknown) => boolean }).canShare;
+  if (canShare && canShare({ files: [file] })) {
+    await (navigator as unknown as { share: (data: unknown) => Promise<void> }).share({
+      files: [file],
+      title: filename,
+    });
+  } else {
+    throw new Error("Sharing not supported on this device/browser");
+  }
 };
 
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
@@ -641,7 +662,7 @@ export const InvoicingManager = ({
       return;
     }
     const finalName = filename.trim().endsWith(".csv") ? filename.trim() : `${slugify(filename || batchName)}.csv`;
-    downloadCsv(finalName, preview.rows);
+    const csvText = downloadCsv(finalName, preview.rows);
     const count = preview.rows.length - 1;
     const nowIso = new Date().toISOString();
 
@@ -696,11 +717,11 @@ export const InvoicingManager = ({
             })),
           { filename: finalName },
         );
-        toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} and archived ${preview.archiveAfter.groupCount}`);
+        toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} and archived ${preview.archiveAfter.groupCount}. Saved as "${finalName}" in your Downloads folder.`);
         setSelected(new Set());
       }
     } else {
-      toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} to CSV`);
+      toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} to CSV. Saved as "${finalName}" in your Downloads folder.`);
     }
     load();
     setPreview(null);
@@ -1248,6 +1269,38 @@ export const InvoicingManager = ({
             <Button variant="outline" onClick={() => setPreview(null)} className="w-full sm:w-auto">
               Cancel
             </Button>
+            {preview && (
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    await copyCsv(preview.rows);
+                    toast.success("CSV copied to clipboard — paste it into an email or spreadsheet");
+                  } catch {
+                    toast.error("Could not copy to clipboard");
+                  }
+                }}
+                className="font-display tracking-wider w-full sm:w-auto"
+              >
+                <Copy className="h-4 w-4" /> Copy CSV
+              </Button>
+            )}
+            {preview && typeof navigator !== "undefined" && "share" in navigator && (
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    const finalName = filename.trim().endsWith(".csv") ? filename.trim() : `${slugify(filename || batchName)}.csv`;
+                    await shareCsv(finalName, preview.rows);
+                  } catch (e: unknown) {
+                    toast.error(`Sharing failed: ${e instanceof Error ? e.message : String(e)}`);
+                  }
+                }}
+                className="font-display tracking-wider w-full sm:w-auto"
+              >
+                <Share2 className="h-4 w-4" /> Share
+              </Button>
+            )}
             <Button
               onClick={confirmDownload}
               disabled={!previewValidation.ok || downloadBlocked}
