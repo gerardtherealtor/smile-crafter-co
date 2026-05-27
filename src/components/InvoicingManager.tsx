@@ -74,6 +74,27 @@ const downloadCsv = (filename: string, rows: (string | number)[][]) => {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return csv;
+};
+
+const copyCsv = async (rows: (string | number)[][]) => {
+  const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
+  await navigator.clipboard.writeText(csv);
+};
+
+const shareCsv = async (filename: string, rows: (string | number)[][]) => {
+  const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const file = new File([blob], filename, { type: "text/csv" });
+  const canShare = (navigator as unknown as { canShare?: (data: unknown) => boolean }).canShare;
+  if (canShare && canShare({ files: [file] })) {
+    await (navigator as unknown as { share: (data: unknown) => Promise<void> }).share({
+      files: [file],
+      title: filename,
+    });
+  } else {
+    throw new Error("Sharing not supported on this device/browser");
+  }
 };
 
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
