@@ -18,7 +18,7 @@ import {
 } from "@/lib/time";
 import {
   AlertTriangle, Archive, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight,
-  Download, FileCheck2, History, Loader2, Search, Send, Undo2, X,
+  Copy, Download, FileCheck2, History, Loader2, Search, Send, Share2, Undo2, X,
 } from "lucide-react";
 
 type AuditAction =
