@@ -1269,6 +1269,38 @@ export const InvoicingManager = ({
             <Button variant="outline" onClick={() => setPreview(null)} className="w-full sm:w-auto">
               Cancel
             </Button>
+            {preview && (
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    await copyCsv(preview.rows);
+                    toast.success("CSV copied to clipboard — paste it into an email or spreadsheet");
+                  } catch {
+                    toast.error("Could not copy to clipboard");
+                  }
+                }}
+                className="font-display tracking-wider w-full sm:w-auto"
+              >
+                <Copy className="h-4 w-4" /> Copy CSV
+              </Button>
+            )}
+            {preview && typeof navigator !== "undefined" && (navigator as unknown as { canShare?: (data: unknown) => boolean }).canShare && (navigator as unknown as { canShare?: (data: unknown) => boolean }).canShare!({ files: [new File([], "test.csv", { type: "text/csv" })] }) && (
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    const finalName = filename.trim().endsWith(".csv") ? filename.trim() : `${slugify(filename || batchName)}.csv`;
+                    await shareCsv(finalName, preview.rows);
+                  } catch (e: unknown) {
+                    toast.error(`Sharing failed: ${e instanceof Error ? e.message : String(e)}`);
+                  }
+                }}
+                className="font-display tracking-wider w-full sm:w-auto"
+              >
+                <Share2 className="h-4 w-4" /> Share
+              </Button>
+            )}
             <Button
               onClick={confirmDownload}
               disabled={!previewValidation.ok || downloadBlocked}
