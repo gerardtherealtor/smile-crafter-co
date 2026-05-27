@@ -662,7 +662,7 @@ export const InvoicingManager = ({
       return;
     }
     const finalName = filename.trim().endsWith(".csv") ? filename.trim() : `${slugify(filename || batchName)}.csv`;
-    downloadCsv(finalName, preview.rows);
+    const csvText = downloadCsv(finalName, preview.rows);
     const count = preview.rows.length - 1;
     const nowIso = new Date().toISOString();
 
@@ -717,11 +717,11 @@ export const InvoicingManager = ({
             })),
           { filename: finalName },
         );
-        toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} and archived ${preview.archiveAfter.groupCount}`);
+        toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} and archived ${preview.archiveAfter.groupCount}. Saved as "${finalName}" in your Downloads folder.`);
         setSelected(new Set());
       }
     } else {
-      toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} to CSV`);
+      toast.success(`Exported ${count} invoice${count === 1 ? "" : "s"} to CSV. Saved as "${finalName}" in your Downloads folder.`);
     }
     load();
     setPreview(null);
