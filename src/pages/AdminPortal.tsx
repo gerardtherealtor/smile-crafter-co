@@ -394,8 +394,9 @@ const PdfPreview = ({ file }: { file: Blob | null }) => {
   }, [file]);
 
   return (
-    <div ref={containerRef} className="flex-1 bg-muted overflow-auto p-4">
-      {status && <div className="flex h-full items-center justify-center text-muted-foreground">{status}</div>}
+    <div className="relative flex-1 bg-muted overflow-auto p-4">
+      {status && <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">{status}</div>}
+      <div ref={containerRef} className="relative z-10 min-h-full" />
     </div>
   );
 };
