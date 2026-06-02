@@ -1013,19 +1013,233 @@ export const InvoicingManager = ({
             </SelectContent>
           </Select>
 
-          {hasActiveFilters ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={clearFilters}
-              className="font-display tracking-wider sm:col-span-2 lg:col-span-1 justify-center"
-            >
-              <X className="h-4 w-4" />
-              Clear
-            </Button>
-          ) : <div className="hidden lg:block" />}
+          <div className="flex gap-2 sm:col-span-2 lg:col-span-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="font-display tracking-wider flex-1 justify-center relative"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  More
+                  {activeAdvancedCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold h-5 min-w-5 px-1.5">
+                      {activeAdvancedCount}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[min(92vw,420px)] max-h-[70vh] overflow-y-auto p-4 space-y-4">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Hours range</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number" min="0" step="0.25" inputMode="decimal"
+                      placeholder="Min"
+                      value={minHours}
+                      onChange={(e) => setMinHours(e.target.value)}
+                    />
+                    <span className="text-muted-foreground text-xs">to</span>
+                    <Input
+                      type="number" min="0" step="0.25" inputMode="decimal"
+                      placeholder="Max"
+                      value={maxHours}
+                      onChange={(e) => setMaxHours(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                      Workers ({workerFilter.length || "all"})
+                    </Label>
+                    {workerFilter.length > 0 && (
+                      <button type="button" onClick={() => setWorkerFilter([])} className="text-xs underline-offset-4 hover:underline text-muted-foreground">
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="rounded-md border border-border max-h-40 overflow-y-auto p-2 space-y-1">
+                    {workersInGroups.length === 0 && (
+                      <div className="text-xs text-muted-foreground">No workers yet</div>
+                    )}
+                    {workersInGroups.map((p) => {
+                      const checked = workerFilter.includes(p.id);
+                      return (
+                        <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer rounded px-1.5 py-1 hover:bg-muted">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(c) => {
+                              setWorkerFilter((prev) => c ? [...prev, p.id] : prev.filter((x) => x !== p.id));
+                            }}
+                          />
+                          <span className="truncate">{p.full_name || p.email}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                      Work categories ({categoryFilter.length || "all"})
+                    </Label>
+                    {categoryFilter.length > 0 && (
+                      <button type="button" onClick={() => setCategoryFilter([])} className="text-xs underline-offset-4 hover:underline text-muted-foreground">
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="rounded-md border border-border max-h-48 overflow-y-auto p-2 space-y-1">
+                    {categoriesAvailable.length === 0 && (
+                      <div className="text-xs text-muted-foreground">No categories yet</div>
+                    )}
+                    {categoriesAvailable.map((name) => {
+                      const checked = categoryFilter.includes(name);
+                      return (
+                        <label key={name} className="flex items-center gap-2 text-sm cursor-pointer rounded px-1.5 py-1 hover:bg-muted">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(c) => {
+                              setCategoryFilter((prev) => c ? [...prev, name] : prev.filter((x) => x !== name));
+                            }}
+                          />
+                          <span className="truncate">{name}</span>
+                        </label>
+                      );
+                    })}
+                    <div className="border-t border-border my-1" />
+                    <label className="flex items-center gap-2 text-sm cursor-pointer rounded px-1.5 py-1 hover:bg-muted">
+                      <Checkbox
+                        checked={categoryFilter.includes("__other__")}
+                        onCheckedChange={(c) => {
+                          setCategoryFilter((prev) => c ? [...prev, "__other__"] : prev.filter((x) => x !== "__other__"));
+                        }}
+                      />
+                      <span className="italic text-muted-foreground">Other (free text)</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer rounded px-1.5 py-1 hover:bg-muted">
+                      <Checkbox
+                        checked={categoryFilter.includes("__none__")}
+                        onCheckedChange={(c) => {
+                          setCategoryFilter((prev) => c ? [...prev, "__none__"] : prev.filter((x) => x !== "__none__"));
+                        }}
+                      />
+                      <span className="italic text-muted-foreground">No category set</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">CSV export status</Label>
+                  <Select value={exportStatusFilter} onValueChange={setExportStatusFilter}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any</SelectItem>
+                      <SelectItem value="exported">Already exported</SelectItem>
+                      <SelectItem value="not_exported">Not exported yet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover open={savePresetOpen} onOpenChange={setSavePresetOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="font-display tracking-wider"
+                  title="Smart filters"
+                >
+                  <Star className={`h-4 w-4 ${activePreset ? "fill-current text-primary" : ""}`} />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[min(92vw,340px)] p-3 space-y-3">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Saved smart filters</Label>
+                  {presets.length === 0 ? (
+                    <div className="text-xs text-muted-foreground mt-2">No saved filters yet. Set up filters and save them below.</div>
+                  ) : (
+                    <div className="mt-1 space-y-1 max-h-48 overflow-y-auto">
+                      {presets.map((p) => (
+                        <div key={p.name} className={`flex items-center gap-1 rounded-md border px-2 py-1.5 ${activePreset === p.name ? "border-primary bg-primary/5" : "border-border"}`}>
+                          <button
+                            type="button"
+                            onClick={() => applyPreset(p)}
+                            className="flex-1 text-left text-sm truncate hover:underline underline-offset-4"
+                          >
+                            {p.name}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deletePreset(p.name)}
+                            className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-muted"
+                            aria-label={`Delete ${p.name}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="border-t border-border pt-3 space-y-2">
+                  <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Save current filters as…</Label>
+                  <Input
+                    placeholder="e.g. This week unbilled"
+                    value={newPresetName}
+                    onChange={(e) => setNewPresetName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveCurrentAsPreset(); }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={saveCurrentAsPreset}
+                    disabled={!newPresetName.trim()}
+                    className="w-full font-display tracking-wider"
+                  >
+                    <BookmarkPlus className="h-4 w-4" /> Save smart filter
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="font-display tracking-wider"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
+
+        {activePreset && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-2.5 py-1">
+              <Star className="h-3 w-3 fill-current" />
+              Smart filter: <span className="font-semibold">{activePreset}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => { setActivePreset(""); localStorage.removeItem(ACTIVE_PRESET_KEY); }}
+              className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+            >
+              detach
+            </button>
+          </div>
+        )}
+
 
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
