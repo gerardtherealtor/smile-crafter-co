@@ -32,6 +32,8 @@ const AdminPortal = () => {
   const [roster, setRoster] = useState<RosterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Profile | null>(null);
+
 
   const monday = useMemo(() => weekStart(), []);
   const sunday = useMemo(() => weekEnd(monday), [monday]);
