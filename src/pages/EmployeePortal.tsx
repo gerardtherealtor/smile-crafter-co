@@ -70,7 +70,7 @@ const EmployeePortal = () => {
   const loadData = async () => {
     if (!user) return;
     setLoading(true);
-    const [jobsRes, entriesRes] = await Promise.all([
+    const [jobsRes, entriesRes, catsRes] = await Promise.all([
       supabase.from("jobs").select("id,name").eq("is_active", true).order("name"),
       supabase.from("time_entries")
         .select("id,work_date,clock_in,clock_out,break_minutes,hours,job_id,notes,work_category,work_category_other,work_quantity")
@@ -78,7 +78,9 @@ const EmployeePortal = () => {
         .gte("work_date", monday)
         .lte("work_date", sunday)
         .order("work_date", { ascending: false }),
+      supabase.from("work_categories").select("name,sort_order").eq("is_active", true).order("sort_order"),
     ]);
+    if (catsRes.data) setCategories(catsRes.data.map((c) => c.name));
     if (jobsRes.data) {
       // Natural sort so Hamilton Lot # 2 comes before # 10
       const sorted = [...jobsRes.data].sort((a, b) =>
@@ -431,7 +433,7 @@ const EmployeePortal = () => {
                       style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.5'><polyline points='6 9 12 15 18 9'/></svg>\")", paddingRight: "2.25rem" }}
                     >
                       <option value="">{t("employee.pickCategory")}</option>
-                      {WORK_CATEGORIES.map((c) => (
+                      {categories.map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}
                       <option value="__other__">{t("employee.otherCategory")}…</option>
