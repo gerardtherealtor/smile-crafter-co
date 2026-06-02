@@ -206,18 +206,23 @@ export const InvoicingManager = ({
 
   const load = async () => {
     setLoading(true);
-    const [e, inv] = await Promise.all([
+    const [e, inv, cats] = await Promise.all([
       supabase
         .from("time_entries")
-        .select("id,user_id,job_id,work_date,clock_in,clock_out,hours,notes,notes_en")
+        .select("id,user_id,job_id,work_date,clock_in,clock_out,hours,notes,notes_en,work_category,work_category_other,work_quantity")
         .order("work_date", { ascending: false }),
       supabase
         .from("job_invoices")
         .select("id,job_id,week_start,week_end,invoiced_at,notes,status,csv_exported_at,csv_export_count")
         .order("week_start", { ascending: false }),
+      supabase
+        .from("work_categories")
+        .select("name,sort_order,is_active")
+        .order("sort_order"),
     ]);
     if (e.data) setEntries(e.data as TEntry[]);
     if (inv.data) setInvoices(inv.data as InvoiceRecord[]);
+    if (cats.data) setCategories((cats.data as { name: string; is_active: boolean }[]).filter((c) => c.is_active).map((c) => c.name));
     setLoading(false);
   };
 
