@@ -12,7 +12,7 @@ import {
 import {
   formatDate, formatHours, formatTime12, splitOvertime, weekEnd, weekStart,
 } from "@/lib/time";
-import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Receipt, Trash2, Users } from "lucide-react";
+import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Receipt, Tag, Trash2, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InvoicingManager } from "@/components/InvoicingManager";
 
@@ -310,9 +310,13 @@ interface DetailEntry {
   clock_in: string;
   clock_out: string;
   hours: number;
+  break_minutes: number;
   notes: string | null;
   notes_en: string | null;
   job_id: string | null;
+  work_category: string | null;
+  work_category_other: string | null;
+  work_quantity: number | null;
 }
 
 const EmployeeWeekDialog = ({
@@ -336,7 +340,7 @@ const EmployeeWeekDialog = ({
       setLoading(true);
       const { data } = await supabase
         .from("time_entries")
-        .select("id,work_date,clock_in,clock_out,hours,notes,notes_en,job_id")
+        .select("id,work_date,clock_in,clock_out,hours,break_minutes,notes,notes_en,job_id,work_category,work_category_other,work_quantity")
         .eq("user_id", profile.id)
         .gte("work_date", monday)
         .lte("work_date", sunday)
@@ -406,17 +410,29 @@ const EmployeeWeekDialog = ({
                   <div className="text-sm font-display">{formatHours(dayTotal)} {t("common.hours")}</div>
                 </div>
                 <div className="space-y-2">
-                  {dayEntries.map((e) => (
-                    <div key={e.id} className="text-sm border-l-2 border-maple/40 pl-3">
-                      <div className="flex justify-between flex-wrap gap-2">
-                        <span className="font-medium">{jobName(e.job_id)}</span>
-                        <span className="text-muted-foreground">
-                          {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {formatHours(Number(e.hours))} {t("common.hours")}
-                        </span>
+                  {dayEntries.map((e) => {
+                    const cat = e.work_category === "Other"
+                      ? (e.work_category_other || "Other")
+                      : e.work_category;
+                    return (
+                      <div key={e.id} className="text-sm border-l-2 border-maple/40 pl-3">
+                        <div className="flex justify-between flex-wrap gap-2">
+                          <span className="font-medium">{jobName(e.job_id)}</span>
+                          <span className="text-muted-foreground">
+                            {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {formatHours(Number(e.hours))} {t("common.hours")}
+                            {e.break_minutes ? ` · ${e.break_minutes}m break` : ""}
+                          </span>
+                        </div>
+                        {(cat || e.work_quantity != null) && (
+                          <div className="text-xs text-foreground/80 mt-1">
+                            {cat}
+                            {e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
+                          </div>
+                        )}
+                        {(e.notes_en || e.notes) && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes_en || e.notes}</div>}
                       </div>
-                      {(e.notes_en || e.notes) && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes_en || e.notes}</div>}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
