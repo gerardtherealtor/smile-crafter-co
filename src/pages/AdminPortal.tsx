@@ -140,8 +140,6 @@ const AdminPortal = () => {
       toast.error(t("admin.downloadLink"));
       return;
     }
-    // Use an anchor click instead of window.open — mobile Safari/PWA blocks
-    // window.open() after an await because it's not seen as a user gesture.
     const a = document.createElement("a");
     a.href = data.signedUrl;
     a.rel = "noopener";
@@ -151,6 +149,23 @@ const AdminPortal = () => {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const [previewReport, setPreviewReport] = useState<ReportRow | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const openPreview = async (r: ReportRow) => {
+    if (!r.pdf_path) { toast.error("No PDF available for this week yet. Click 'Send Report Now' to generate it."); return; }
+    setPreviewReport(r);
+    setPreviewUrl(null);
+    const { data, error } = await supabase.storage
+      .from("weekly-reports")
+      .createSignedUrl(r.pdf_path, 60 * 10);
+    if (error || !data) {
+      toast.error(t("admin.downloadLink"));
+      setPreviewReport(null);
+      return;
+    }
+    setPreviewUrl(data.signedUrl);
   };
 
   return (
@@ -263,15 +278,25 @@ const AdminPortal = () => {
                 {reports.length === 0 ? (
                   <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{t("admin.noReports")}</TableCell></TableRow>
                 ) : reports.map((r) => (
-                  <TableRow key={r.id}>
+                  <TableRow
+                    key={r.id}
+                    onClick={() => r.pdf_path && openPreview(r)}
+                    className={r.pdf_path ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+                    title={r.pdf_path ? "Click to preview report" : ""}
+                  >
                     <TableCell>{formatDate(r.week_start)} – {formatDate(r.week_end)}</TableCell>
                     <TableCell className="text-right font-display">{formatHours(Number(r.total_regular_hours))}</TableCell>
                     <TableCell className="text-right font-display text-maple">{formatHours(Number(r.total_overtime_hours))}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       {r.pdf_path ? (
-                        <Button size="sm" variant="outline" onClick={() => downloadReport(r.pdf_path!)}>
-                          <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => openPreview(r)}>
+                            Preview
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => downloadReport(r.pdf_path!)}>
+                            <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
+                          </Button>
+                        </div>
                       ) : <span className="text-muted-foreground text-sm">{t("common.emDash")}</span>}
                     </TableCell>
                   </TableRow>
@@ -284,6 +309,27 @@ const AdminPortal = () => {
       {selectedEmployee && (
         <EmployeeWeekDialog profile={selectedEmployee} jobs={jobs} onClose={() => setSelectedEmployee(null)} />
       )}
+      <Dialog open={!!previewReport} onOpenChange={(o) => { if (!o) { setPreviewReport(null); setPreviewUrl(null); } }}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-4 border-b border-border flex flex-row items-center justify-between space-y-0">
+            <DialogTitle className="font-display tracking-wide">
+              {previewReport && `${formatDate(previewReport.week_start)} – ${formatDate(previewReport.week_end)}`}
+            </DialogTitle>
+            {previewReport?.pdf_path && (
+              <Button size="sm" variant="outline" className="mr-8" onClick={() => downloadReport(previewReport.pdf_path!)}>
+                <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
+              </Button>
+            )}
+          </DialogHeader>
+          <div className="flex-1 bg-muted overflow-hidden">
+            {previewUrl ? (
+              <iframe src={previewUrl} className="w-full h-full border-0" title="Report preview" />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">Loading preview…</div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </PortalLayout>
   );
 };
