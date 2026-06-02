@@ -17,6 +17,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { InvoicingManager } from "@/components/InvoicingManager";
 
 interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean; is_test: boolean }
+
+// Sort key: last name, first name. Falls back to email local part when name is missing.
+const lastFirstKey = (p: { full_name?: string | null; email?: string | null }) => {
+  const raw = (p.full_name || (p.email ?? "").split("@")[0] || "").trim();
+  if (!raw) return "zzz";
+  if (raw.includes(",")) return raw.toLowerCase(); // already "Last, First"
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].toLowerCase();
+  const last = parts[parts.length - 1];
+  const first = parts.slice(0, -1).join(" ");
+  return `${last} ${first}`.toLowerCase();
+};
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
 interface EntryRow { user_id: string; hours: number; work_date: string }
 interface ReportRow { id: string; week_start: string; week_end: string; pdf_path: string | null; total_regular_hours: number; total_overtime_hours: number; generated_at: string }
@@ -50,7 +62,13 @@ const AdminPortal = () => {
         .order("week_start", { ascending: false }).limit(20),
       supabase.from("roster").select("id,full_name,is_active,linked_profile_id").order("full_name"),
     ]);
-    if (p.data) setProfiles(p.data as Profile[]);
+    if (p.data) {
+      const sorted = [...p.data].sort((a: any, b: any) => {
+        if (!!a.is_test !== !!b.is_test) return a.is_test ? 1 : -1;
+        return lastFirstKey(a).localeCompare(lastFirstKey(b));
+      });
+      setProfiles(sorted as Profile[]);
+    }
     if (j.data) {
       const sortedJobs = [...j.data].sort((a, b) =>
         a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
@@ -77,7 +95,7 @@ const AdminPortal = () => {
       return { ...p, total, regular, overtime };
     }).sort((a, b) => {
       if (a.is_test !== b.is_test) return a.is_test ? 1 : -1;
-      return (a.full_name || a.email).localeCompare(b.full_name || b.email);
+      return lastFirstKey(a).localeCompare(lastFirstKey(b));
     });
   }, [entries, profiles]);
 
@@ -568,7 +586,7 @@ const RosterManager = ({
               const aTest = findProfile(a)?.is_test ? 1 : 0;
               const bTest = findProfile(b)?.is_test ? 1 : 0;
               if (aTest !== bTest) return aTest - bTest;
-              return a.full_name.localeCompare(b.full_name);
+              return lastFirstKey({ full_name: a.full_name }).localeCompare(lastFirstKey({ full_name: b.full_name }));
             }).map((r) => {
               const linked = findProfile(r);
               return (
