@@ -582,6 +582,7 @@ const RosterManager = ({
                     >
                       {r.full_name}
                     </button>
+                    {linked?.is_test && <span className="ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border align-middle">Test</span>}
                     {!linked && <div className="text-xs text-muted-foreground">{t("admin.roster.notSignedUp")}</div>}
                   </TableCell>
                   <TableCell className="text-right">
