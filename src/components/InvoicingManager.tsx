@@ -347,16 +347,41 @@ export const InvoicingManager = ({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const minH = minHours.trim() === "" ? null : Number(minHours);
+    const maxH = maxHours.trim() === "" ? null : Number(maxHours);
+    const workerSet = new Set(workerFilter);
+    const catSet = new Set(categoryFilter);
     const result = groups.filter((g) => {
       if (g.stage !== view) return false;
       if (jobFilter !== "all" && g.job.id !== jobFilter) return false;
       if (rangeBounds.from && g.week_start < rangeBounds.from) return false;
       if (rangeBounds.to && g.week_start > rangeBounds.to) return false;
+      if (minH !== null && Number.isFinite(minH) && g.totalHours < minH) return false;
+      if (maxH !== null && Number.isFinite(maxH) && g.totalHours > maxH) return false;
+      if (workerSet.size > 0) {
+        let hit = false;
+        for (const wid of g.workerIds) if (workerSet.has(wid)) { hit = true; break; }
+        if (!hit) return false;
+      }
+      if (catSet.size > 0) {
+        const hit = g.entries.some((e) => {
+          if (e.work_category && catSet.has(e.work_category)) return true;
+          if (catSet.has("__other__") && (e.work_category === "Other" || !!e.work_category_other)) return true;
+          if (catSet.has("__none__") && !e.work_category) return true;
+          return false;
+        });
+        if (!hit) return false;
+      }
+      if (exportStatusFilter !== "all") {
+        const count = g.invoice?.csv_export_count ?? 0;
+        if (exportStatusFilter === "exported" && count === 0) return false;
+        if (exportStatusFilter === "not_exported" && count > 0) return false;
+      }
       if (q) {
         const hay =
           `${g.job.name} ${g.job.address ?? ""}`.toLowerCase() + " " +
           Array.from(g.workerIds).map((id) => profileName(id)).join(" ").toLowerCase() + " " +
-          g.entries.map((e) => `${e.notes_en ?? ""} ${e.notes ?? ""}`).join(" ").toLowerCase();
+          g.entries.map((e) => `${e.notes_en ?? ""} ${e.notes ?? ""} ${e.work_category ?? ""} ${e.work_category_other ?? ""}`).join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -381,12 +406,90 @@ export const InvoicingManager = ({
           a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" }));
     }
     return sorted;
-  }, [groups, view, search, jobFilter, rangeBounds, sortBy, profiles]);
+  }, [groups, view, search, jobFilter, rangeBounds, sortBy, profiles, workerFilter, categoryFilter, minHours, maxHours, exportStatusFilter]);
 
-  const hasActiveFilters = search !== "" || jobFilter !== "all" || rangeFilter !== "all" || sortBy !== "newest";
+  const activeAdvancedCount =
+    (workerFilter.length > 0 ? 1 : 0) +
+    (categoryFilter.length > 0 ? 1 : 0) +
+    (minHours.trim() !== "" ? 1 : 0) +
+    (maxHours.trim() !== "" ? 1 : 0) +
+    (exportStatusFilter !== "all" ? 1 : 0);
+
+  const hasActiveFilters =
+    search !== "" || jobFilter !== "all" || rangeFilter !== "all" || sortBy !== "newest" ||
+    activeAdvancedCount > 0;
+
   const clearFilters = () => {
     setSearch(""); setJobFilter("all"); setRangeFilter("all"); setSortBy("newest");
+    setWorkerFilter([]); setCategoryFilter([]); setMinHours(""); setMaxHours("");
+    setExportStatusFilter("all");
+    setActivePreset("");
+    localStorage.removeItem(ACTIVE_PRESET_KEY);
   };
+
+  // Workers seen in current groups for the multi-select.
+  const workersInGroups = useMemo(() => {
+    const ids = new Set<string>();
+    for (const g of groups) for (const id of g.workerIds) ids.add(id);
+    return profiles
+      .filter((p) => ids.has(p.id))
+      .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email));
+  }, [groups, profiles]);
+
+  // Categories seen in entries (union with admin list so empty categories still show)
+  const categoriesAvailable = useMemo(() => {
+    const set = new Set<string>(categories);
+    for (const g of groups) for (const e of g.entries) if (e.work_category) set.add(e.work_category);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [categories, groups]);
+
+  // ---- Smart filter presets ----
+  const applyPreset = (p: Preset) => {
+    setSearch(p.search);
+    setJobFilter(p.jobFilter);
+    setRangeFilter(p.rangeFilter);
+    setSortBy(p.sortBy);
+    setWorkerFilter(p.workerFilter || []);
+    setCategoryFilter(p.categoryFilter || []);
+    setMinHours(p.minHours || "");
+    setMaxHours(p.maxHours || "");
+    setExportStatusFilter(p.exportStatusFilter || "all");
+    setActivePreset(p.name);
+    localStorage.setItem(ACTIVE_PRESET_KEY, p.name);
+  };
+
+  const saveCurrentAsPreset = () => {
+    const name = newPresetName.trim();
+    if (!name) { toast.error("Give the filter a name"); return; }
+    const next: Preset = {
+      name, search, jobFilter, rangeFilter, sortBy,
+      workerFilter, categoryFilter, minHours, maxHours, exportStatusFilter,
+    };
+    const filtered = presets.filter((p) => p.name !== name);
+    persistPresets([...filtered, next].sort((a, b) => a.name.localeCompare(b.name)));
+    setActivePreset(name);
+    localStorage.setItem(ACTIVE_PRESET_KEY, name);
+    setNewPresetName("");
+    setSavePresetOpen(false);
+    toast.success(`Saved smart filter "${name}"`);
+  };
+
+  const deletePreset = (name: string) => {
+    persistPresets(presets.filter((p) => p.name !== name));
+    if (activePreset === name) {
+      setActivePreset("");
+      localStorage.removeItem(ACTIVE_PRESET_KEY);
+    }
+    toast.success(`Deleted "${name}"`);
+  };
+
+  // Auto-apply active preset on mount
+  useEffect(() => {
+    if (!activePreset) return;
+    const p = presets.find((x) => x.name === activePreset);
+    if (p) applyPreset(p);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const jobsInGroups = useMemo(() => {
     const ids = new Set(groups.map((g) => g.job.id));
