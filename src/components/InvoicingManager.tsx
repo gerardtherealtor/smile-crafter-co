@@ -101,7 +101,7 @@ const shareCsv = async (filename: string, rows: (string | number)[][]) => {
 };
 
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
-interface Profile { id: string; full_name: string; email: string }
+interface Profile { id: string; full_name: string; email: string; is_test?: boolean }
 interface TEntry {
   id: string; user_id: string; job_id: string | null; work_date: string;
   clock_in: string; clock_out: string; hours: number; notes: string | null; notes_en: string | null;
