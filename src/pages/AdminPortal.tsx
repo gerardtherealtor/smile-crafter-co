@@ -489,14 +489,40 @@ const RosterManager = ({
     if (error) toast.error(error.message); else { toast.success(t("admin.roster.removed")); reload(); }
   };
 
-  // Match roster entry to a signed-up profile (by linked_profile_id or name)
+  // Match roster entry to a signed-up profile by linked_profile_id, or by
+  // fuzzy token overlap across the roster name, profile name, and email local part.
+  // Handles "Last, First", nicknames in parens, and profiles that only stored a first name.
   const findProfile = (r: RosterRow): Profile | null => {
     if (r.linked_profile_id) {
       return profiles.find((p) => p.id === r.linked_profile_id) ?? null;
     }
-    const norm = r.full_name.trim().toLowerCase();
-    return profiles.find((p) => (p.full_name ?? "").trim().toLowerCase() === norm) ?? null;
+    const tokenize = (s: string) =>
+      new Set(
+        s
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, " ")
+          .split(/\s+/)
+          .filter((w) => w.length >= 3 && !["jr", "sr", "the", "and"].includes(w))
+      );
+    const rosterTokens = tokenize(r.full_name);
+    let best: { profile: Profile; score: number } | null = null;
+    for (const p of profiles) {
+      const emailLocal = (p.email ?? "").split("@")[0] ?? "";
+      const profileTokens = tokenize(`${p.full_name ?? ""} ${emailLocal}`);
+      let score = 0;
+      for (const t of rosterTokens) {
+        if (profileTokens.has(t)) { score += 2; continue; }
+        // partial match within email/name (e.g. roster "hughes" inside "coryhughes1991")
+        for (const pt of profileTokens) {
+          if (pt.includes(t) || t.includes(pt)) { score += 1; break; }
+        }
+      }
+      if (score > 0 && (!best || score > best.score)) best = { profile: p, score };
+    }
+    // Require at least 2 points (one strong match, or two partials) to avoid false hits.
+    return best && best.score >= 2 ? best.profile : null;
   };
+
 
   const openDetail = (r: RosterRow) => {
     const p = findProfile(r);
