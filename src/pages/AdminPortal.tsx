@@ -156,16 +156,20 @@ const AdminPortal = () => {
   const openPreview = async (r: ReportRow) => {
     if (!r.pdf_path) { toast.error("No PDF available for this week yet. Click 'Send Report Now' to generate it."); return; }
     setPreviewReport(r);
-    setPreviewUrl(null);
+    setPreviewUrl((prev) => { if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev); return null; });
+    // Download the PDF as a blob and render via a same-origin blob: URL.
+    // Some browsers (Comet, strict ad-blockers) block third-party iframes loading
+    // signed Supabase Storage URLs, so we proxy via blob to keep the preview working.
     const { data, error } = await supabase.storage
       .from("weekly-reports")
-      .createSignedUrl(r.pdf_path, 60 * 10);
+      .download(r.pdf_path);
     if (error || !data) {
       toast.error(t("admin.downloadLink"));
       setPreviewReport(null);
       return;
     }
-    setPreviewUrl(data.signedUrl);
+    const blob = data.type === "application/pdf" ? data : new Blob([data], { type: "application/pdf" });
+    setPreviewUrl(URL.createObjectURL(blob));
   };
 
   return (
