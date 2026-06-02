@@ -17,6 +17,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { InvoicingManager } from "@/components/InvoicingManager";
 
 interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean; is_test: boolean }
+
+// Sort key: last name, first name. Falls back to email local part when name is missing.
+const lastFirstKey = (p: { full_name?: string | null; email?: string | null }) => {
+  const raw = (p.full_name || (p.email ?? "").split("@")[0] || "").trim();
+  if (!raw) return "zzz";
+  if (raw.includes(",")) return raw.toLowerCase(); // already "Last, First"
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].toLowerCase();
+  const last = parts[parts.length - 1];
+  const first = parts.slice(0, -1).join(" ");
+  return `${last} ${first}`.toLowerCase();
+};
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
 interface EntryRow { user_id: string; hours: number; work_date: string }
 interface ReportRow { id: string; week_start: string; week_end: string; pdf_path: string | null; total_regular_hours: number; total_overtime_hours: number; generated_at: string }
