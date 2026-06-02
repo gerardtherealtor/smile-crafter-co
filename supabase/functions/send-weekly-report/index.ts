@@ -247,7 +247,9 @@ Deno.serve(async (req) => {
       for (const ent of r.entries) {
         if (y > 750) { doc.addPage(); y = 50; }
         doc.text(fmtDate(ent.work_date), 50, y);
-        doc.text(`${ent.clock_in.slice(0,5)}–${ent.clock_out.slice(0,5)}`, 200, y);
+        const ci = (ent.clock_in ?? "").toString().slice(0,5);
+        const co = (ent.clock_out ?? "").toString().slice(0,5);
+        doc.text(`${ci}–${co}`, 200, y);
         doc.text(jobName(ent.job_id), 280, y);
         doc.text(`${fmtHours(Number(ent.hours))} hr`, 540, y, { align: "right" });
         y += 12;
