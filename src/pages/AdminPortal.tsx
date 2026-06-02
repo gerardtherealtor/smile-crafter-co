@@ -129,6 +129,7 @@ const AdminPortal = () => {
           <TabsTrigger value="invoicing" className="font-display tracking-wider"><Receipt className="h-4 w-4 mr-1.5" />{t("admin.tabs.invoicing")}</TabsTrigger>
           <TabsTrigger value="roster" className="font-display tracking-wider"><ClipboardList className="h-4 w-4 mr-1.5" />{t("admin.tabs.roster")}</TabsTrigger>
           <TabsTrigger value="jobs" className="font-display tracking-wider"><Briefcase className="h-4 w-4 mr-1.5" />{t("admin.tabs.jobs")}</TabsTrigger>
+          <TabsTrigger value="categories" className="font-display tracking-wider"><Tag className="h-4 w-4 mr-1.5" />Categories</TabsTrigger>
           <TabsTrigger value="reports" className="font-display tracking-wider"><FileDown className="h-4 w-4 mr-1.5" />{t("admin.tabs.reports")}</TabsTrigger>
         </TabsList>
 
@@ -194,6 +195,11 @@ const AdminPortal = () => {
         <TabsContent value="jobs">
           <JobsManager jobs={jobs} reload={load} />
         </TabsContent>
+
+        <TabsContent value="categories">
+          <CategoriesManager />
+        </TabsContent>
+
 
         <TabsContent value="reports">
           <div className="rounded-xl border border-border bg-card shadow-deep">
