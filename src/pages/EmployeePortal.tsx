@@ -432,6 +432,46 @@ const EmployeePortal = () => {
                            onChange={(e) => updateShift(i, { clockOut: e.target.value })}
                            className="mt-1.5 text-lg" required />
                   </div>
+                  <div>
+                    <Label>{t("employee.breakMinutes")} <span className="text-muted-foreground font-normal">{t("common.optional")}</span></Label>
+                    <Input type="number" inputMode="numeric" min={0} max={480} step={5}
+                           value={s.breakMinutes}
+                           onChange={(e) => updateShift(i, { breakMinutes: e.target.value })}
+                           placeholder={t("employee.breakPlaceholder")}
+                           className="mt-1.5" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label>{t("employee.workCategory")}</Label>
+                    <select
+                      value={s.category}
+                      onChange={(e) => updateShift(i, { category: e.target.value })}
+                      className="mt-1.5 flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:1em_1em]"
+                      style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.5'><polyline points='6 9 12 15 18 9'/></svg>\")", paddingRight: "2.25rem" }}
+                    >
+                      <option value="">{t("employee.pickCategory")}</option>
+                      {WORK_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                      <option value="__other__">{t("employee.otherCategory")}…</option>
+                    </select>
+                  </div>
+                  {s.category === "__other__" && (
+                    <div className="sm:col-span-3">
+                      <Label>{t("employee.otherDetail")}</Label>
+                      <Input value={s.categoryOther}
+                             onChange={(e) => updateShift(i, { categoryOther: e.target.value })}
+                             maxLength={120}
+                             className="mt-1.5" />
+                    </div>
+                  )}
+                  <div className="sm:col-span-3">
+                    <Label>{t("employee.quantity")}</Label>
+                    <Input type="number" inputMode="decimal" min={0} step="any"
+                           value={s.quantity}
+                           onChange={(e) => updateShift(i, { quantity: e.target.value })}
+                           placeholder={t("employee.quantityPlaceholder")}
+                           className="mt-1.5" />
+                  </div>
                   <div className="sm:col-span-3">
                     <Label>{t("employee.notesForJob")}</Label>
                     <Textarea value={s.notes}
