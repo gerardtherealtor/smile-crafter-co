@@ -12,7 +12,7 @@ import {
 import {
   formatDate, formatHours, formatTime12, splitOvertime, weekEnd, weekStart,
 } from "@/lib/time";
-import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Receipt, Trash2, Users } from "lucide-react";
+import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Receipt, Tag, Trash2, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InvoicingManager } from "@/components/InvoicingManager";
 
@@ -129,6 +129,7 @@ const AdminPortal = () => {
           <TabsTrigger value="invoicing" className="font-display tracking-wider"><Receipt className="h-4 w-4 mr-1.5" />{t("admin.tabs.invoicing")}</TabsTrigger>
           <TabsTrigger value="roster" className="font-display tracking-wider"><ClipboardList className="h-4 w-4 mr-1.5" />{t("admin.tabs.roster")}</TabsTrigger>
           <TabsTrigger value="jobs" className="font-display tracking-wider"><Briefcase className="h-4 w-4 mr-1.5" />{t("admin.tabs.jobs")}</TabsTrigger>
+          <TabsTrigger value="categories" className="font-display tracking-wider"><Tag className="h-4 w-4 mr-1.5" />Categories</TabsTrigger>
           <TabsTrigger value="reports" className="font-display tracking-wider"><FileDown className="h-4 w-4 mr-1.5" />{t("admin.tabs.reports")}</TabsTrigger>
         </TabsList>
 
@@ -194,6 +195,11 @@ const AdminPortal = () => {
         <TabsContent value="jobs">
           <JobsManager jobs={jobs} reload={load} />
         </TabsContent>
+
+        <TabsContent value="categories">
+          <CategoriesManager />
+        </TabsContent>
+
 
         <TabsContent value="reports">
           <div className="rounded-xl border border-border bg-card shadow-deep">
@@ -310,9 +316,13 @@ interface DetailEntry {
   clock_in: string;
   clock_out: string;
   hours: number;
+  break_minutes: number;
   notes: string | null;
   notes_en: string | null;
   job_id: string | null;
+  work_category: string | null;
+  work_category_other: string | null;
+  work_quantity: number | null;
 }
 
 const EmployeeWeekDialog = ({
@@ -336,7 +346,7 @@ const EmployeeWeekDialog = ({
       setLoading(true);
       const { data } = await supabase
         .from("time_entries")
-        .select("id,work_date,clock_in,clock_out,hours,notes,notes_en,job_id")
+        .select("id,work_date,clock_in,clock_out,hours,break_minutes,notes,notes_en,job_id,work_category,work_category_other,work_quantity")
         .eq("user_id", profile.id)
         .gte("work_date", monday)
         .lte("work_date", sunday)
@@ -406,17 +416,29 @@ const EmployeeWeekDialog = ({
                   <div className="text-sm font-display">{formatHours(dayTotal)} {t("common.hours")}</div>
                 </div>
                 <div className="space-y-2">
-                  {dayEntries.map((e) => (
-                    <div key={e.id} className="text-sm border-l-2 border-maple/40 pl-3">
-                      <div className="flex justify-between flex-wrap gap-2">
-                        <span className="font-medium">{jobName(e.job_id)}</span>
-                        <span className="text-muted-foreground">
-                          {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {formatHours(Number(e.hours))} {t("common.hours")}
-                        </span>
+                  {dayEntries.map((e) => {
+                    const cat = e.work_category === "Other"
+                      ? (e.work_category_other || "Other")
+                      : e.work_category;
+                    return (
+                      <div key={e.id} className="text-sm border-l-2 border-maple/40 pl-3">
+                        <div className="flex justify-between flex-wrap gap-2">
+                          <span className="font-medium">{jobName(e.job_id)}</span>
+                          <span className="text-muted-foreground">
+                            {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {formatHours(Number(e.hours))} {t("common.hours")}
+                            {e.break_minutes ? ` · ${e.break_minutes}m break` : ""}
+                          </span>
+                        </div>
+                        {(cat || e.work_quantity != null) && (
+                          <div className="text-xs text-foreground/80 mt-1">
+                            {cat}
+                            {e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
+                          </div>
+                        )}
+                        {(e.notes_en || e.notes) && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes_en || e.notes}</div>}
                       </div>
-                      {(e.notes_en || e.notes) && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes_en || e.notes}</div>}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -535,6 +557,129 @@ const RosterManager = ({
       {selected && (
         <EmployeeWeekDialog profile={selected} jobs={jobs} onClose={() => setSelected(null)} />
       )}
+    </div>
+  );
+};
+
+interface WorkCategory { id: string; name: string; sort_order: number; is_active: boolean }
+
+const CategoriesManager = () => {
+  const [cats, setCats] = useState<WorkCategory[]>([]);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("work_categories")
+      .select("id,name,sort_order,is_active")
+      .order("sort_order")
+      .order("name");
+    setCats((data ?? []) as WorkCategory[]);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setBusy(true);
+    const maxOrder = cats.reduce((m, c) => Math.max(m, c.sort_order), 0);
+    const { error } = await supabase
+      .from("work_categories")
+      .insert({ name: trimmed, sort_order: maxOrder + 10 });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setName(""); toast.success("Category added"); load();
+  };
+
+  const toggle = async (c: WorkCategory) => {
+    const { error } = await supabase
+      .from("work_categories")
+      .update({ is_active: !c.is_active })
+      .eq("id", c.id);
+    if (error) toast.error(error.message); else load();
+  };
+
+  const rename = async (c: WorkCategory) => {
+    const next = window.prompt("Rename category", c.name);
+    if (!next || next.trim() === c.name) return;
+    const { error } = await supabase
+      .from("work_categories")
+      .update({ name: next.trim() })
+      .eq("id", c.id);
+    if (error) toast.error(error.message); else { toast.success("Renamed"); load(); }
+  };
+
+  const remove = async (c: WorkCategory) => {
+    if (!confirm(`Remove "${c.name}"? Past time entries keep this category as text.`)) return;
+    const { error } = await supabase.from("work_categories").delete().eq("id", c.id);
+    if (error) toast.error(error.message); else { toast.success("Removed"); load(); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-deep">
+        <p className="text-sm text-muted-foreground mb-3">
+          Categories show up in the "What did you work on" dropdown on the My Time screen. Add new ones as work types come up.
+        </p>
+        <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-3">
+          <Input
+            placeholder="New category name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={120}
+            required
+          />
+          <Button
+            type="submit"
+            disabled={busy}
+            className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider"
+          >
+            <Plus className="h-4 w-4 mr-1.5" /> Add
+          </Button>
+        </form>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card shadow-deep overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Category</TableHead>
+              <TableHead className="text-right">Status</TableHead>
+              <TableHead className="text-right">Rename</TableHead>
+              <TableHead className="text-right">Remove</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
+            ) : cats.length === 0 ? (
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No categories yet.</TableCell></TableRow>
+            ) : cats.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell className="font-medium">{c.name}</TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant={c.is_active ? "outline" : "secondary"} onClick={() => toggle(c)}>
+                    {c.is_active ? "Active" : "Hidden"}
+                  </Button>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="ghost" onClick={() => rename(c)}>Edit</Button>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="ghost" onClick={() => remove(c)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
