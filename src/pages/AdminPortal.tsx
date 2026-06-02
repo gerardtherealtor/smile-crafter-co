@@ -41,7 +41,7 @@ const AdminPortal = () => {
   const load = async () => {
     setLoading(true);
     const [p, j, e, r, ro] = await Promise.all([
-      supabase.from("profiles").select("id,full_name,email,phone,is_active").order("full_name"),
+      supabase.from("profiles").select("id,full_name,email,phone,is_active,is_test").order("is_test", { ascending: true }).order("full_name"),
       supabase.from("jobs").select("id,name,address,is_active").order("name"),
       supabase.from("time_entries")
         .select("user_id,hours,work_date")
