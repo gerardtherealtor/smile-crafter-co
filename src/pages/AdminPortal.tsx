@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { PortalLayout } from "@/components/PortalLayout";
@@ -13,8 +13,12 @@ import {
   formatDate, formatHours, formatTime12, splitOvertime, weekEnd, weekStart,
 } from "@/lib/time";
 import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Receipt, Tag, Trash2, Users } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InvoicingManager } from "@/components/InvoicingManager";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+
+GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean; is_test: boolean }
 
@@ -152,14 +156,11 @@ const AdminPortal = () => {
   };
 
   const [previewReport, setPreviewReport] = useState<ReportRow | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const openPreview = async (r: ReportRow) => {
     if (!r.pdf_path) { toast.error("No PDF available for this week yet. Click 'Send Report Now' to generate it."); return; }
     setPreviewReport(r);
-    setPreviewUrl((prev) => { if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev); return null; });
-    // Download the PDF as a blob and render via a same-origin blob: URL.
-    // Some browsers (Comet, strict ad-blockers) block third-party iframes loading
-    // signed Supabase Storage URLs, so we proxy via blob to keep the preview working.
+    setPreviewBlob(null);
     const { data, error } = await supabase.storage
       .from("weekly-reports")
       .download(r.pdf_path);
@@ -169,7 +170,7 @@ const AdminPortal = () => {
       return;
     }
     const blob = data.type === "application/pdf" ? data : new Blob([data], { type: "application/pdf" });
-    setPreviewUrl(URL.createObjectURL(blob));
+    setPreviewBlob(blob);
   };
 
   return (
@@ -313,28 +314,90 @@ const AdminPortal = () => {
       {selectedEmployee && (
         <EmployeeWeekDialog profile={selectedEmployee} jobs={jobs} onClose={() => setSelectedEmployee(null)} />
       )}
-      <Dialog open={!!previewReport} onOpenChange={(o) => { if (!o) { setPreviewReport(null); setPreviewUrl((prev) => { if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev); return null; }); } }}>
+      <Dialog open={!!previewReport} onOpenChange={(o) => { if (!o) { setPreviewReport(null); setPreviewBlob(null); } }}>
         <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
           <DialogHeader className="p-4 border-b border-border flex flex-row items-center justify-between space-y-0">
             <DialogTitle className="font-display tracking-wide">
               {previewReport && `${formatDate(previewReport.week_start)} – ${formatDate(previewReport.week_end)}`}
             </DialogTitle>
+            <DialogDescription className="sr-only">Weekly report PDF preview</DialogDescription>
             {previewReport?.pdf_path && (
               <Button size="sm" variant="outline" className="mr-8" onClick={() => downloadReport(previewReport.pdf_path!)}>
                 <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
               </Button>
             )}
           </DialogHeader>
-          <div className="flex-1 bg-muted overflow-hidden">
-            {previewUrl ? (
-              <iframe src={previewUrl} className="w-full h-full border-0" title="Report preview" />
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">Loading preview…</div>
-            )}
-          </div>
+          <PdfPreview file={previewBlob} />
         </DialogContent>
       </Dialog>
     </PortalLayout>
+  );
+};
+
+const PdfPreview = ({ file }: { file: Blob | null }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [status, setStatus] = useState("Loading preview…");
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.innerHTML = "";
+    if (!file) {
+      setStatus("Loading preview…");
+      return;
+    }
+
+    let cancelled = false;
+    setStatus("Rendering preview…");
+
+    const renderPdf = async () => {
+      try {
+        const data = await file.arrayBuffer();
+        const pdf = await getDocument({ data }).promise;
+        const wrapperWidth = Math.max(container.clientWidth - 32, 320);
+        const pixelRatio = window.devicePixelRatio || 1;
+
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+          if (cancelled) return;
+          const page = await pdf.getPage(pageNumber);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const scale = Math.min(1.5, Math.max(0.8, wrapperWidth / baseViewport.width));
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          if (!context) continue;
+
+          canvas.width = Math.floor(viewport.width * pixelRatio);
+          canvas.height = Math.floor(viewport.height * pixelRatio);
+          canvas.style.width = `${Math.floor(viewport.width)}px`;
+          canvas.style.height = `${Math.floor(viewport.height)}px`;
+          canvas.className = "mx-auto my-4 block bg-background shadow-deep";
+          context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+          container.appendChild(canvas);
+
+          await page.render({ canvas, canvasContext: context, viewport }).promise;
+        }
+
+        if (!cancelled) setStatus("");
+      } catch (error) {
+        console.error("Report preview failed", error);
+        if (!cancelled) setStatus("Preview failed. Please use Download instead.");
+      }
+    };
+
+    renderPdf();
+
+    return () => {
+      cancelled = true;
+      container.innerHTML = "";
+    };
+  }, [file]);
+
+  return (
+    <div className="relative flex-1 bg-muted overflow-auto p-4">
+      {status && <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">{status}</div>}
+      <div ref={containerRef} className="relative z-10 min-h-full" />
+    </div>
   );
 };
 
