@@ -545,7 +545,14 @@ const EmployeePortal = () => {
                         <div className="font-medium text-sm">{formatDate(e.work_date)}</div>
                         <div className="text-xs text-muted-foreground">
                           {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {job?.name ?? "—"}
+                          {e.break_minutes ? ` · ${e.break_minutes}m break` : ""}
                         </div>
+                        {(e.work_category || e.work_quantity != null) && (
+                          <div className="text-xs text-foreground/80 mt-1">
+                            {e.work_category === "Other" ? (e.work_category_other || "Other") : e.work_category}
+                            {e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
+                          </div>
+                        )}
                         {e.notes && (
                           <div className="text-xs text-foreground/80 mt-1 italic break-words">
                             “{e.notes}”
