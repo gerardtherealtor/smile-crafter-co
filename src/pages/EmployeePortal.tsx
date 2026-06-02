@@ -98,7 +98,7 @@ const EmployeePortal = () => {
     const [jobsRes, entriesRes] = await Promise.all([
       supabase.from("jobs").select("id,name").eq("is_active", true).order("name"),
       supabase.from("time_entries")
-        .select("id,work_date,clock_in,clock_out,break_minutes,hours,job_id,notes")
+        .select("id,work_date,clock_in,clock_out,break_minutes,hours,job_id,notes,work_category,work_category_other,work_quantity")
         .eq("user_id", user.id)
         .gte("work_date", monday)
         .lte("work_date", sunday)
