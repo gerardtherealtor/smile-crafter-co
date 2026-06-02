@@ -75,6 +75,9 @@ const AdminPortal = () => {
       const total = map.get(p.id) ?? 0;
       const { regular, overtime } = splitOvertime(total);
       return { ...p, total, regular, overtime };
+    }).sort((a, b) => {
+      if (a.is_test !== b.is_test) return a.is_test ? 1 : -1;
+      return (a.full_name || a.email).localeCompare(b.full_name || b.email);
     });
   }, [entries, profiles]);
 
