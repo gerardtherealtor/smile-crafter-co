@@ -255,10 +255,12 @@ export const InvoicingManager = ({
     if (error) console.warn("audit log insert failed", error);
   };
 
-  const profileName = (id: string) =>
-    profiles.find((p) => p.id === id)?.full_name ||
-    profiles.find((p) => p.id === id)?.email ||
-    "Unknown";
+  const profileName = (id: string) => {
+    const p = profiles.find((pr) => pr.id === id);
+    if (!p) return "Unknown";
+    const base = p.full_name || p.email || "Unknown";
+    return p.is_test ? `${base} (TEST)` : base;
+  };
 
   // Group time entries by (job_id, week_start) and attach invoice records.
   const groups = useMemo<JobWeekGroup[]>(() => {
