@@ -101,7 +101,7 @@ const shareCsv = async (filename: string, rows: (string | number)[][]) => {
 };
 
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
-interface Profile { id: string; full_name: string; email: string }
+interface Profile { id: string; full_name: string; email: string; is_test?: boolean }
 interface TEntry {
   id: string; user_id: string; job_id: string | null; work_date: string;
   clock_in: string; clock_out: string; hours: number; notes: string | null; notes_en: string | null;
@@ -255,10 +255,12 @@ export const InvoicingManager = ({
     if (error) console.warn("audit log insert failed", error);
   };
 
-  const profileName = (id: string) =>
-    profiles.find((p) => p.id === id)?.full_name ||
-    profiles.find((p) => p.id === id)?.email ||
-    "Unknown";
+  const profileName = (id: string) => {
+    const p = profiles.find((pr) => pr.id === id);
+    if (!p) return "Unknown";
+    const base = p.full_name || p.email || "Unknown";
+    return p.is_test ? `${base} (TEST)` : base;
+  };
 
   // Group time entries by (job_id, week_start) and attach invoice records.
   const groups = useMemo<JobWeekGroup[]>(() => {
@@ -433,7 +435,12 @@ export const InvoicingManager = ({
     for (const g of groups) for (const id of g.workerIds) ids.add(id);
     return profiles
       .filter((p) => ids.has(p.id))
-      .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email));
+      .sort((a, b) => {
+        const at = a.is_test ? 1 : 0;
+        const bt = b.is_test ? 1 : 0;
+        if (at !== bt) return at - bt;
+        return (a.full_name || a.email).localeCompare(b.full_name || b.email);
+      });
   }, [groups, profiles]);
 
   // Categories seen in entries (union with admin list so empty categories still show)

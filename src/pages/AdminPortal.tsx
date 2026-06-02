@@ -16,7 +16,7 @@ import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Pl
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InvoicingManager } from "@/components/InvoicingManager";
 
-interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean }
+interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean; is_test: boolean }
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
 interface EntryRow { user_id: string; hours: number; work_date: string }
 interface ReportRow { id: string; week_start: string; week_end: string; pdf_path: string | null; total_regular_hours: number; total_overtime_hours: number; generated_at: string }
@@ -41,7 +41,7 @@ const AdminPortal = () => {
   const load = async () => {
     setLoading(true);
     const [p, j, e, r, ro] = await Promise.all([
-      supabase.from("profiles").select("id,full_name,email,phone,is_active").order("full_name"),
+      supabase.from("profiles").select("id,full_name,email,phone,is_active,is_test").order("is_test", { ascending: true }).order("full_name"),
       supabase.from("jobs").select("id,name,address,is_active").order("name"),
       supabase.from("time_entries")
         .select("user_id,hours,work_date")
@@ -75,6 +75,9 @@ const AdminPortal = () => {
       const total = map.get(p.id) ?? 0;
       const { regular, overtime } = splitOvertime(total);
       return { ...p, total, regular, overtime };
+    }).sort((a, b) => {
+      if (a.is_test !== b.is_test) return a.is_test ? 1 : -1;
+      return (a.full_name || a.email).localeCompare(b.full_name || b.email);
     });
   }, [entries, profiles]);
 
@@ -174,7 +177,10 @@ const AdminPortal = () => {
                       title={t("admin.roster.viewHours")}
                     >
                       <TableCell>
-                        <div className="font-medium group-hover:text-maple transition-colors">{p.full_name || p.email}</div>
+                        <div className="font-medium group-hover:text-maple transition-colors flex items-center gap-2">
+                          {p.full_name || p.email}
+                          {p.is_test && <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">Test</span>}
+                        </div>
                         <div className="text-xs text-muted-foreground">{p.email}</div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground">{p.phone ?? "—"}</TableCell>
@@ -558,7 +564,12 @@ const RosterManager = ({
           <TableBody>
             {roster.length === 0 ? (
               <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">{t("admin.roster.empty")}</TableCell></TableRow>
-            ) : roster.map((r) => {
+            ) : [...roster].sort((a, b) => {
+              const aTest = findProfile(a)?.is_test ? 1 : 0;
+              const bTest = findProfile(b)?.is_test ? 1 : 0;
+              if (aTest !== bTest) return aTest - bTest;
+              return a.full_name.localeCompare(b.full_name);
+            }).map((r) => {
               const linked = findProfile(r);
               return (
                 <TableRow key={r.id}>
@@ -571,6 +582,7 @@ const RosterManager = ({
                     >
                       {r.full_name}
                     </button>
+                    {linked?.is_test && <span className="ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border align-middle">Test</span>}
                     {!linked && <div className="text-xs text-muted-foreground">{t("admin.roster.notSignedUp")}</div>}
                   </TableCell>
                   <TableCell className="text-right">
