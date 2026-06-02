@@ -435,7 +435,12 @@ export const InvoicingManager = ({
     for (const g of groups) for (const id of g.workerIds) ids.add(id);
     return profiles
       .filter((p) => ids.has(p.id))
-      .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email));
+      .sort((a, b) => {
+        const at = a.is_test ? 1 : 0;
+        const bt = b.is_test ? 1 : 0;
+        if (at !== bt) return at - bt;
+        return (a.full_name || a.email).localeCompare(b.full_name || b.email);
+      });
   }, [groups, profiles]);
 
   // Categories seen in entries (union with admin list so empty categories still show)
