@@ -71,10 +71,11 @@ Deno.serve(async (req) => {
     const monday = body.week_start ?? isoDate(getMondayOfWeek());
     const sunday = addDays(monday, 6);
 
-    // 1. Load employees
+    // 1. Load employees (test accounts sorted to bottom)
     const { data: profiles, error: pErr } = await supabase
       .from("profiles")
-      .select("id, full_name, email, phone")
+      .select("id, full_name, email, phone, is_test")
+      .order("is_test", { ascending: true })
       .order("full_name");
     if (pErr) throw pErr;
 
@@ -91,13 +92,14 @@ Deno.serve(async (req) => {
     const jobName = (id: string | null) => jobs?.find((j) => j.id === id)?.name ?? "—";
 
     // 3. Aggregate
-    type Row = { name: string; email: string; phone: string | null; total: number; entries: any[] };
+    type Row = { name: string; email: string; phone: string | null; total: number; entries: any[]; isTest: boolean };
     const rows: Row[] = (profiles ?? []).map((p) => ({
-      name: p.full_name || p.email,
+      name: (p.full_name || p.email) + (p.is_test ? " (TEST ACCOUNT)" : ""),
       email: p.email,
       phone: p.phone,
       total: 0,
       entries: [],
+      isTest: !!p.is_test,
     }));
 
     for (const e of entries ?? []) {
