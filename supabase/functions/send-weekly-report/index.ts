@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
       const { regular, overtime } = splitOT(r.total);
       if (y > 720) { doc.addPage(); y = 50; }
       doc.setTextColor(20, 20, 20);
-      doc.text(r.name.slice(0, 30), 50, y);
+      doc.text(r.name.slice(0, 38), 50, y);
       doc.setTextColor(120, 120, 120);
       doc.text((r.phone ?? "—").slice(0, 20), 230, y);
       doc.setTextColor(20, 20, 20);
