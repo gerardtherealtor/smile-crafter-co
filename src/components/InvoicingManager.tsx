@@ -105,6 +105,7 @@ interface Profile { id: string; full_name: string; email: string }
 interface TEntry {
   id: string; user_id: string; job_id: string | null; work_date: string;
   clock_in: string; clock_out: string; hours: number; notes: string | null; notes_en: string | null;
+  work_category: string | null; work_category_other: string | null; work_quantity: number | null;
 }
 interface InvoiceRecord {
   id: string; job_id: string; week_start: string; week_end: string;
