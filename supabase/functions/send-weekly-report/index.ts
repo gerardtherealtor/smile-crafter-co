@@ -83,6 +83,18 @@ Deno.serve(async (req) => {
       return `${last} ${first}`.toLowerCase();
     };
 
+    // Display "Last, First" — matches the admin lists exactly.
+    const displayLastFirst = (p: { full_name?: string | null; email?: string | null }) => {
+      const raw = (p.full_name || (p.email ?? "").split("@")[0] || "").trim();
+      if (!raw) return p.email ?? "—";
+      if (raw.includes(",")) return raw;
+      const parts = raw.split(/\s+/).filter(Boolean);
+      if (parts.length === 1) return parts[0];
+      const last = parts[parts.length - 1];
+      const first = parts.slice(0, -1).join(" ");
+      return `${last}, ${first}`;
+    };
+
     // 1. Load employees
     const { data: profilesRaw, error: pErr } = await supabase
       .from("profiles")
@@ -105,23 +117,24 @@ Deno.serve(async (req) => {
     const { data: jobs } = await supabase.from("jobs").select("id, name");
     const jobName = (id: string | null) => jobs?.find((j) => j.id === id)?.name ?? "—";
 
-    // 3. Aggregate
-    type Row = { name: string; email: string; phone: string | null; total: number; entries: any[]; isTest: boolean };
+    // 3. Aggregate (keyed by user id so missing/changed emails never drop rows)
+    type Row = { id: string; name: string; email: string | null; phone: string | null; total: number; entries: any[]; isTest: boolean };
     const rows: Row[] = profiles.map((p: any) => ({
-      name: (p.full_name || p.email) + (p.is_test ? " (TEST ACCOUNT)" : ""),
-      email: p.email,
+      id: p.id,
+      name: displayLastFirst(p) + (p.is_test ? " (TEST ACCOUNT)" : ""),
+      email: p.email ?? null,
       phone: p.phone,
       total: 0,
       entries: [],
       isTest: !!p.is_test,
     }));
+    const rowById = new Map(rows.map((r) => [r.id, r]));
 
     for (const e of entries ?? []) {
-      const r = rows.find((row) => (profiles ?? []).find((p) => p.id === e.user_id && p.email === row.email));
-      if (r) {
-        r.entries.push(e);
-        r.total += Number(e.hours);
-      }
+      const r = rowById.get(e.user_id);
+      if (!r) continue;
+      r.entries.push(e);
+      r.total += Number(e.hours) || 0;
     }
 
     let grandReg = 0, grandOT = 0;
@@ -198,7 +211,7 @@ Deno.serve(async (req) => {
       const { regular, overtime } = splitOT(r.total);
       if (y > 720) { doc.addPage(); y = 50; }
       doc.setTextColor(20, 20, 20);
-      doc.text(r.name.slice(0, 30), 50, y);
+      doc.text(r.name.slice(0, 38), 50, y);
       doc.setTextColor(120, 120, 120);
       doc.text((r.phone ?? "—").slice(0, 20), 230, y);
       doc.setTextColor(20, 20, 20);
@@ -234,7 +247,9 @@ Deno.serve(async (req) => {
       for (const ent of r.entries) {
         if (y > 750) { doc.addPage(); y = 50; }
         doc.text(fmtDate(ent.work_date), 50, y);
-        doc.text(`${ent.clock_in.slice(0,5)}–${ent.clock_out.slice(0,5)}`, 200, y);
+        const ci = (ent.clock_in ?? "").toString().slice(0,5);
+        const co = (ent.clock_out ?? "").toString().slice(0,5);
+        doc.text(`${ci}–${co}`, 200, y);
         doc.text(jobName(ent.job_id), 280, y);
         doc.text(`${fmtHours(Number(ent.hours))} hr`, 540, y, { align: "right" });
         y += 12;
