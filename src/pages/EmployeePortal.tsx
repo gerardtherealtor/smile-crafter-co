@@ -156,17 +156,32 @@ const EmployeePortal = () => {
         return trimmed;
       }
     };
-    const rows = await Promise.all(valid.map(async (s) => ({
-      user_id: user.id,
-      job_id: s.jobId || null,
-      work_date: date,
-      clock_in: `${s.clockIn}:00`,
-      clock_out: `${s.clockOut}:00`,
-      break_minutes: 0,
-      hours: shiftHours(s),
-      notes: s.notes.trim() || null,
-      notes_en: await translateNotes(s.notes),
-    })));
+    const categoryLabel = (s: Shift) => {
+      if (!s.category) return null;
+      if (s.category === "__other__") return s.categoryOther.trim() || "Other";
+      return s.category;
+    };
+    const rows = await Promise.all(valid.map(async (s) => {
+      const breakMin = Math.max(0, parseInt(s.breakMinutes || "0", 10) || 0);
+      const qty = s.quantity.trim() === "" ? null : Number(s.quantity);
+      const isOther = s.category === "__other__";
+      const otherDetail = isOther ? s.categoryOther.trim() : "";
+      const otherDetailEn = isOther ? await translateNotes(otherDetail) : null;
+      return {
+        user_id: user.id,
+        job_id: s.jobId || null,
+        work_date: date,
+        clock_in: `${s.clockIn}:00`,
+        clock_out: `${s.clockOut}:00`,
+        break_minutes: breakMin,
+        hours: shiftHours(s),
+        notes: s.notes.trim() || null,
+        notes_en: await translateNotes(s.notes),
+        work_category: isOther ? "Other" : (s.category || null),
+        work_category_other: otherDetailEn || (isOther ? otherDetail || null : null),
+        work_quantity: qty !== null && !Number.isNaN(qty) ? qty : null,
+      };
+    }));
     // Replace today's existing entries with the new set
     const { error: delError } = await supabase
       .from("time_entries")
@@ -190,6 +205,15 @@ const EmployeePortal = () => {
         .join(", ");
       const first = valid[0];
       const last = valid[valid.length - 1];
+      const summaryParts = rows.map((r, i) => {
+        const bits: string[] = [];
+        const cat = r.work_category === "Other" ? (r.work_category_other || "Other") : r.work_category;
+        if (cat) bits.push(cat);
+        if (r.work_quantity != null) bits.push(`qty ${r.work_quantity}`);
+        if (r.break_minutes) bits.push(`${r.break_minutes}m break`);
+        if (r.notes_en) bits.push(r.notes_en);
+        return bits.length ? `Job ${i + 1}: ${bits.join(" — ")}` : null;
+      }).filter(Boolean).join(" | ");
       supabase.functions.invoke("notify-admins", {
         body: {
           templateName: "admin-hours-submitted",
@@ -200,13 +224,13 @@ const EmployeePortal = () => {
             jobName: jobNames,
             clockIn: formatTime12(`${first.clockIn}:00`),
             clockOut: formatTime12(`${last.clockOut}:00`),
-            breakMinutes: 0,
+            breakMinutes: rows.reduce((sum, r) => sum + (r.break_minutes || 0), 0),
             hours: liveHours.toFixed(2),
-            notes: rows.map((r, i) => r.notes_en ? `Job ${i + 1}: ${r.notes_en}` : null).filter(Boolean).join(" | ") || undefined,
+            notes: summaryParts || undefined,
           },
         },
       }).catch(() => {});
-      setShifts([{ clockIn: "", clockOut: "", jobId: "", notes: "" }]);
+      setShifts([blankShift()]);
       await loadData();
     }
   };
