@@ -586,7 +586,7 @@ const RosterManager = ({
               const aTest = findProfile(a)?.is_test ? 1 : 0;
               const bTest = findProfile(b)?.is_test ? 1 : 0;
               if (aTest !== bTest) return aTest - bTest;
-              return a.full_name.localeCompare(b.full_name);
+              return lastFirstKey({ full_name: a.full_name }).localeCompare(lastFirstKey({ full_name: b.full_name }));
             }).map((r) => {
               const linked = findProfile(r);
               return (
