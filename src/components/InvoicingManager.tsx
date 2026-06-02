@@ -150,6 +150,43 @@ export const InvoicingManager = ({
   const [jobFilter, setJobFilter] = useState<string>("all");
   const [rangeFilter, setRangeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [workerFilter, setWorkerFilter] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [minHours, setMinHours] = useState<string>("");
+  const [maxHours, setMaxHours] = useState<string>("");
+  const [exportStatusFilter, setExportStatusFilter] = useState<string>("all");
+  const [categories, setCategories] = useState<string[]>([]);
+
+  // Smart (saved) filter presets — persisted to localStorage per user.
+  type Preset = {
+    name: string;
+    search: string;
+    jobFilter: string;
+    rangeFilter: string;
+    sortBy: string;
+    workerFilter: string[];
+    categoryFilter: string[];
+    minHours: string;
+    maxHours: string;
+    exportStatusFilter: string;
+  };
+  const PRESETS_KEY = "invoicing.filter.presets.v1";
+  const ACTIVE_PRESET_KEY = "invoicing.filter.presets.active.v1";
+  const [presets, setPresets] = useState<Preset[]>(() => {
+    try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || "[]"); } catch { return []; }
+  });
+  const [activePreset, setActivePreset] = useState<string>(() => {
+    return localStorage.getItem(ACTIVE_PRESET_KEY) || "";
+  });
+  const [savePresetOpen, setSavePresetOpen] = useState(false);
+  const [newPresetName, setNewPresetName] = useState("");
+
+  const persistPresets = (next: Preset[]) => {
+    setPresets(next);
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(next));
+  };
+
+  const auditOpen_unused = false; void auditOpen_unused; // keep type-checker friendly
   const [auditOpen, setAuditOpen] = useState(false);
   const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
