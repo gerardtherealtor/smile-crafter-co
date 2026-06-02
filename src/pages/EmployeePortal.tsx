@@ -242,15 +242,22 @@ const EmployeePortal = () => {
   const buildRows = () =>
     [...entries]
       .sort((a, b) => a.work_date.localeCompare(b.work_date))
-      .map((e) => ({
-        date: formatDate(e.work_date),
-        clockIn: formatTime12(e.clock_in),
-        clockOut: formatTime12(e.clock_out),
-        breakMin: e.break_minutes,
-        job: jobs.find((j) => j.id === e.job_id)?.name ?? "—",
-        notes: e.notes ?? "",
-        hours: Number(e.hours),
-      }));
+      .map((e) => {
+        const cat = e.work_category === "Other"
+          ? (e.work_category_other || "Other")
+          : (e.work_category ?? "");
+        return {
+          date: formatDate(e.work_date),
+          clockIn: formatTime12(e.clock_in),
+          clockOut: formatTime12(e.clock_out),
+          breakMin: e.break_minutes,
+          job: jobs.find((j) => j.id === e.job_id)?.name ?? "—",
+          category: cat,
+          quantity: e.work_quantity != null ? String(e.work_quantity) : "",
+          notes: e.notes ?? "",
+          hours: Number(e.hours),
+        };
+      });
 
   const exportCsv = () => {
     if (entries.length === 0) { toast.error(t("employee.nothingToExport")); return; }
@@ -259,17 +266,17 @@ const EmployeePortal = () => {
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = [t("employee.date"), t("employee.clockIn"), t("employee.clockOut"), "Break (min)", t("employee.jobSite"), t("common.notes"), t("employee.total")];
+    const header = [t("employee.date"), t("employee.clockIn"), t("employee.clockOut"), "Break (min)", t("employee.jobSite"), "Work Category", "Quantity", t("common.notes"), t("employee.total")];
     const lines = [
       `${t("employee.employeeLabel")},${esc(employeeName)}`,
       `${t("employee.weekLabel")},${esc(weekLabel)}`,
       "",
       header.join(","),
-      ...rows.map((r) => [r.date, r.clockIn, r.clockOut, r.breakMin, r.job, r.notes, r.hours.toFixed(2)].map(esc).join(",")),
+      ...rows.map((r) => [r.date, r.clockIn, r.clockOut, r.breakMin, r.job, r.category, r.quantity, r.notes, r.hours.toFixed(2)].map(esc).join(",")),
       "",
-      `,,,,,${t("employee.regular")},${totals.regular.toFixed(2)}`,
-      `,,,,,${t("employee.overtime")},${totals.overtime.toFixed(2)}`,
-      `,,,,,${t("employee.total")},${totals.total.toFixed(2)}`,
+      `,,,,,,,${t("employee.regular")},${totals.regular.toFixed(2)}`,
+      `,,,,,,,${t("employee.overtime")},${totals.overtime.toFixed(2)}`,
+      `,,,,,,,${t("employee.total")},${totals.total.toFixed(2)}`,
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
