@@ -23,7 +23,36 @@ interface Job { id: string; name: string }
 interface Entry {
   id: string; work_date: string; clock_in: string; clock_out: string;
   break_minutes: number; hours: number; job_id: string | null; notes: string | null;
+  work_category?: string | null; work_category_other?: string | null; work_quantity?: number | null;
 }
+
+const WORK_CATEGORIES = [
+  "Scrape lot",
+  "Cut out for house foundation",
+  "Scrape footers",
+  "Back fill foundation",
+  "Dig and install positive and foundation drains",
+  "Dig water",
+  "Dig sewer",
+  "Dig electrical",
+  "Backfill utilities",
+  "Cutout the concrete",
+  "Load and haul off spoils",
+  "Haul infill dirt",
+  "Rough grade yard",
+  "Haul topsoil",
+  "Final grade",
+  "Install culverts and driveway",
+  "Install sleeves in driveway and sidewalk",
+  "Deliver rock for foundation",
+  "Deliver rock for driveway",
+  "Deliver rock for utilities",
+  "Hammer rock",
+  "3/4 Gravel",
+  "Crush and Run",
+  "Compactible Fill",
+  "Rip Rap Gravel",
+] as const;
 
 const EmployeePortal = () => {
   const { t } = useTranslation();
@@ -42,23 +71,25 @@ const EmployeePortal = () => {
   const [defaultJobId, setDefaultJobId] = useState<string>("");
   
 
-  type Shift = { clockIn: string; clockOut: string; jobId: string; notes: string };
-  const [shifts, setShifts] = useState<Shift[]>([
-    { clockIn: "", clockOut: "", jobId: "", notes: "" },
-  ]);
+  type Shift = {
+    clockIn: string; clockOut: string; jobId: string; notes: string;
+    breakMinutes: string; category: string; categoryOther: string; quantity: string;
+  };
+  const blankShift = (): Shift => ({
+    clockIn: "", clockOut: "", jobId: "", notes: "",
+    breakMinutes: "", category: "", categoryOther: "", quantity: "",
+  });
+  const [shifts, setShifts] = useState<Shift[]>([blankShift()]);
 
   const updateShift = (i: number, patch: Partial<Shift>) =>
     setShifts((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   const addShift = () =>
-    setShifts((prev) =>
-      prev.length >= 5
-        ? prev
-        : [...prev, { clockIn: "", clockOut: "", jobId: "", notes: "" }]
-    );
+    setShifts((prev) => (prev.length >= 5 ? prev : [...prev, blankShift()]));
   const removeShift = (i: number) =>
     setShifts((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
 
-  const shiftHours = (s: Shift) => computeHours(s.clockIn, s.clockOut, 0);
+  const shiftHours = (s: Shift) =>
+    computeHours(s.clockIn, s.clockOut, Math.max(0, parseInt(s.breakMinutes || "0", 10) || 0));
   const liveHours = shifts.reduce((sum, s) => sum + shiftHours(s), 0);
 
   const loadData = async () => {
