@@ -62,7 +62,13 @@ const AdminPortal = () => {
         .order("week_start", { ascending: false }).limit(20),
       supabase.from("roster").select("id,full_name,is_active,linked_profile_id").order("full_name"),
     ]);
-    if (p.data) setProfiles(p.data as Profile[]);
+    if (p.data) {
+      const sorted = [...p.data].sort((a: any, b: any) => {
+        if (!!a.is_test !== !!b.is_test) return a.is_test ? 1 : -1;
+        return lastFirstKey(a).localeCompare(lastFirstKey(b));
+      });
+      setProfiles(sorted as Profile[]);
+    }
     if (j.data) {
       const sortedJobs = [...j.data].sort((a, b) =>
         a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
