@@ -95,7 +95,7 @@ const AdminPortal = () => {
       return { ...p, total, regular, overtime };
     }).sort((a, b) => {
       if (a.is_test !== b.is_test) return a.is_test ? 1 : -1;
-      return (a.full_name || a.email).localeCompare(b.full_name || b.email);
+      return lastFirstKey(a).localeCompare(lastFirstKey(b));
     });
   }, [entries, profiles]);
 
