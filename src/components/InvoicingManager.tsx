@@ -451,7 +451,7 @@ export const InvoicingManager = ({
         const at = a.is_test ? 1 : 0;
         const bt = b.is_test ? 1 : 0;
         if (at !== bt) return at - bt;
-        return (a.full_name || a.email).localeCompare(b.full_name || b.email);
+        return lastFirstKey(a).localeCompare(lastFirstKey(b));
       });
   }, [groups, profiles]);
 
