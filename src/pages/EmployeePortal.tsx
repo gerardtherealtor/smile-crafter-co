@@ -26,38 +26,13 @@ interface Entry {
   work_category?: string | null; work_category_other?: string | null; work_quantity?: number | null;
 }
 
-const WORK_CATEGORIES = [
-  "Scrape lot",
-  "Cut out for house foundation",
-  "Scrape footers",
-  "Back fill foundation",
-  "Dig and install positive and foundation drains",
-  "Dig water",
-  "Dig sewer",
-  "Dig electrical",
-  "Backfill utilities",
-  "Cutout the concrete",
-  "Load and haul off spoils",
-  "Haul infill dirt",
-  "Rough grade yard",
-  "Haul topsoil",
-  "Final grade",
-  "Install culverts and driveway",
-  "Install sleeves in driveway and sidewalk",
-  "Deliver rock for foundation",
-  "Deliver rock for driveway",
-  "Deliver rock for utilities",
-  "Hammer rock",
-  "3/4 Gravel",
-  "Crush and Run",
-  "Compactible Fill",
-  "Rip Rap Gravel",
-] as const;
+// Categories are loaded from the work_categories table (admins can edit them)
 
 const EmployeePortal = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
