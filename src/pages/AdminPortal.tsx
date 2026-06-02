@@ -29,6 +29,18 @@ const lastFirstKey = (p: { full_name?: string | null; email?: string | null }) =
   const first = parts.slice(0, -1).join(" ");
   return `${last} ${first}`.toLowerCase();
 };
+
+// Display name as "Last, First"
+const displayLastFirst = (p: { full_name?: string | null; email?: string | null }) => {
+  const raw = (p.full_name || (p.email ?? "").split("@")[0] || "").trim();
+  if (!raw) return p.email ?? "—";
+  if (raw.includes(",")) return raw; // already formatted
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0];
+  const last = parts[parts.length - 1];
+  const first = parts.slice(0, -1).join(" ");
+  return `${last}, ${first}`;
+};
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
 interface EntryRow { user_id: string; hours: number; work_date: string }
 interface ReportRow { id: string; week_start: string; week_end: string; pdf_path: string | null; total_regular_hours: number; total_overtime_hours: number; generated_at: string }
