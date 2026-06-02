@@ -23,7 +23,36 @@ interface Job { id: string; name: string }
 interface Entry {
   id: string; work_date: string; clock_in: string; clock_out: string;
   break_minutes: number; hours: number; job_id: string | null; notes: string | null;
+  work_category?: string | null; work_category_other?: string | null; work_quantity?: number | null;
 }
+
+const WORK_CATEGORIES = [
+  "Scrape lot",
+  "Cut out for house foundation",
+  "Scrape footers",
+  "Back fill foundation",
+  "Dig and install positive and foundation drains",
+  "Dig water",
+  "Dig sewer",
+  "Dig electrical",
+  "Backfill utilities",
+  "Cutout the concrete",
+  "Load and haul off spoils",
+  "Haul infill dirt",
+  "Rough grade yard",
+  "Haul topsoil",
+  "Final grade",
+  "Install culverts and driveway",
+  "Install sleeves in driveway and sidewalk",
+  "Deliver rock for foundation",
+  "Deliver rock for driveway",
+  "Deliver rock for utilities",
+  "Hammer rock",
+  "3/4 Gravel",
+  "Crush and Run",
+  "Compactible Fill",
+  "Rip Rap Gravel",
+] as const;
 
 const EmployeePortal = () => {
   const { t } = useTranslation();
@@ -42,23 +71,25 @@ const EmployeePortal = () => {
   const [defaultJobId, setDefaultJobId] = useState<string>("");
   
 
-  type Shift = { clockIn: string; clockOut: string; jobId: string; notes: string };
-  const [shifts, setShifts] = useState<Shift[]>([
-    { clockIn: "", clockOut: "", jobId: "", notes: "" },
-  ]);
+  type Shift = {
+    clockIn: string; clockOut: string; jobId: string; notes: string;
+    breakMinutes: string; category: string; categoryOther: string; quantity: string;
+  };
+  const blankShift = (): Shift => ({
+    clockIn: "", clockOut: "", jobId: "", notes: "",
+    breakMinutes: "", category: "", categoryOther: "", quantity: "",
+  });
+  const [shifts, setShifts] = useState<Shift[]>([blankShift()]);
 
   const updateShift = (i: number, patch: Partial<Shift>) =>
     setShifts((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   const addShift = () =>
-    setShifts((prev) =>
-      prev.length >= 5
-        ? prev
-        : [...prev, { clockIn: "", clockOut: "", jobId: "", notes: "" }]
-    );
+    setShifts((prev) => (prev.length >= 5 ? prev : [...prev, blankShift()]));
   const removeShift = (i: number) =>
     setShifts((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
 
-  const shiftHours = (s: Shift) => computeHours(s.clockIn, s.clockOut, 0);
+  const shiftHours = (s: Shift) =>
+    computeHours(s.clockIn, s.clockOut, Math.max(0, parseInt(s.breakMinutes || "0", 10) || 0));
   const liveHours = shifts.reduce((sum, s) => sum + shiftHours(s), 0);
 
   const loadData = async () => {
@@ -67,7 +98,7 @@ const EmployeePortal = () => {
     const [jobsRes, entriesRes] = await Promise.all([
       supabase.from("jobs").select("id,name").eq("is_active", true).order("name"),
       supabase.from("time_entries")
-        .select("id,work_date,clock_in,clock_out,break_minutes,hours,job_id,notes")
+        .select("id,work_date,clock_in,clock_out,break_minutes,hours,job_id,notes,work_category,work_category_other,work_quantity")
         .eq("user_id", user.id)
         .gte("work_date", monday)
         .lte("work_date", sunday)
@@ -125,17 +156,32 @@ const EmployeePortal = () => {
         return trimmed;
       }
     };
-    const rows = await Promise.all(valid.map(async (s) => ({
-      user_id: user.id,
-      job_id: s.jobId || null,
-      work_date: date,
-      clock_in: `${s.clockIn}:00`,
-      clock_out: `${s.clockOut}:00`,
-      break_minutes: 0,
-      hours: shiftHours(s),
-      notes: s.notes.trim() || null,
-      notes_en: await translateNotes(s.notes),
-    })));
+    const categoryLabel = (s: Shift) => {
+      if (!s.category) return null;
+      if (s.category === "__other__") return s.categoryOther.trim() || "Other";
+      return s.category;
+    };
+    const rows = await Promise.all(valid.map(async (s) => {
+      const breakMin = Math.max(0, parseInt(s.breakMinutes || "0", 10) || 0);
+      const qty = s.quantity.trim() === "" ? null : Number(s.quantity);
+      const isOther = s.category === "__other__";
+      const otherDetail = isOther ? s.categoryOther.trim() : "";
+      const otherDetailEn = isOther ? await translateNotes(otherDetail) : null;
+      return {
+        user_id: user.id,
+        job_id: s.jobId || null,
+        work_date: date,
+        clock_in: `${s.clockIn}:00`,
+        clock_out: `${s.clockOut}:00`,
+        break_minutes: breakMin,
+        hours: shiftHours(s),
+        notes: s.notes.trim() || null,
+        notes_en: await translateNotes(s.notes),
+        work_category: isOther ? "Other" : (s.category || null),
+        work_category_other: otherDetailEn || (isOther ? otherDetail || null : null),
+        work_quantity: qty !== null && !Number.isNaN(qty) ? qty : null,
+      };
+    }));
     // Replace today's existing entries with the new set
     const { error: delError } = await supabase
       .from("time_entries")
@@ -159,6 +205,15 @@ const EmployeePortal = () => {
         .join(", ");
       const first = valid[0];
       const last = valid[valid.length - 1];
+      const summaryParts = rows.map((r, i) => {
+        const bits: string[] = [];
+        const cat = r.work_category === "Other" ? (r.work_category_other || "Other") : r.work_category;
+        if (cat) bits.push(cat);
+        if (r.work_quantity != null) bits.push(`qty ${r.work_quantity}`);
+        if (r.break_minutes) bits.push(`${r.break_minutes}m break`);
+        if (r.notes_en) bits.push(r.notes_en);
+        return bits.length ? `Job ${i + 1}: ${bits.join(" — ")}` : null;
+      }).filter(Boolean).join(" | ");
       supabase.functions.invoke("notify-admins", {
         body: {
           templateName: "admin-hours-submitted",
@@ -169,13 +224,13 @@ const EmployeePortal = () => {
             jobName: jobNames,
             clockIn: formatTime12(`${first.clockIn}:00`),
             clockOut: formatTime12(`${last.clockOut}:00`),
-            breakMinutes: 0,
+            breakMinutes: rows.reduce((sum, r) => sum + (r.break_minutes || 0), 0),
             hours: liveHours.toFixed(2),
-            notes: rows.map((r, i) => r.notes_en ? `Job ${i + 1}: ${r.notes_en}` : null).filter(Boolean).join(" | ") || undefined,
+            notes: summaryParts || undefined,
           },
         },
       }).catch(() => {});
-      setShifts([{ clockIn: "", clockOut: "", jobId: "", notes: "" }]);
+      setShifts([blankShift()]);
       await loadData();
     }
   };
@@ -187,15 +242,22 @@ const EmployeePortal = () => {
   const buildRows = () =>
     [...entries]
       .sort((a, b) => a.work_date.localeCompare(b.work_date))
-      .map((e) => ({
-        date: formatDate(e.work_date),
-        clockIn: formatTime12(e.clock_in),
-        clockOut: formatTime12(e.clock_out),
-        breakMin: e.break_minutes,
-        job: jobs.find((j) => j.id === e.job_id)?.name ?? "—",
-        notes: e.notes ?? "",
-        hours: Number(e.hours),
-      }));
+      .map((e) => {
+        const cat = e.work_category === "Other"
+          ? (e.work_category_other || "Other")
+          : (e.work_category ?? "");
+        return {
+          date: formatDate(e.work_date),
+          clockIn: formatTime12(e.clock_in),
+          clockOut: formatTime12(e.clock_out),
+          breakMin: e.break_minutes,
+          job: jobs.find((j) => j.id === e.job_id)?.name ?? "—",
+          category: cat,
+          quantity: e.work_quantity != null ? String(e.work_quantity) : "",
+          notes: e.notes ?? "",
+          hours: Number(e.hours),
+        };
+      });
 
   const exportCsv = () => {
     if (entries.length === 0) { toast.error(t("employee.nothingToExport")); return; }
@@ -204,17 +266,17 @@ const EmployeePortal = () => {
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = [t("employee.date"), t("employee.clockIn"), t("employee.clockOut"), "Break (min)", t("employee.jobSite"), t("common.notes"), t("employee.total")];
+    const header = [t("employee.date"), t("employee.clockIn"), t("employee.clockOut"), "Break (min)", t("employee.jobSite"), "Work Category", "Quantity", t("common.notes"), t("employee.total")];
     const lines = [
       `${t("employee.employeeLabel")},${esc(employeeName)}`,
       `${t("employee.weekLabel")},${esc(weekLabel)}`,
       "",
       header.join(","),
-      ...rows.map((r) => [r.date, r.clockIn, r.clockOut, r.breakMin, r.job, r.notes, r.hours.toFixed(2)].map(esc).join(",")),
+      ...rows.map((r) => [r.date, r.clockIn, r.clockOut, r.breakMin, r.job, r.category, r.quantity, r.notes, r.hours.toFixed(2)].map(esc).join(",")),
       "",
-      `,,,,,${t("employee.regular")},${totals.regular.toFixed(2)}`,
-      `,,,,,${t("employee.overtime")},${totals.overtime.toFixed(2)}`,
-      `,,,,,${t("employee.total")},${totals.total.toFixed(2)}`,
+      `,,,,,,,${t("employee.regular")},${totals.regular.toFixed(2)}`,
+      `,,,,,,,${t("employee.overtime")},${totals.overtime.toFixed(2)}`,
+      `,,,,,,,${t("employee.total")},${totals.total.toFixed(2)}`,
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -377,6 +439,46 @@ const EmployeePortal = () => {
                            onChange={(e) => updateShift(i, { clockOut: e.target.value })}
                            className="mt-1.5 text-lg" required />
                   </div>
+                  <div>
+                    <Label>{t("employee.breakMinutes")} <span className="text-muted-foreground font-normal">{t("common.optional")}</span></Label>
+                    <Input type="number" inputMode="numeric" min={0} max={480} step={5}
+                           value={s.breakMinutes}
+                           onChange={(e) => updateShift(i, { breakMinutes: e.target.value })}
+                           placeholder={t("employee.breakPlaceholder")}
+                           className="mt-1.5" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label>{t("employee.workCategory")}</Label>
+                    <select
+                      value={s.category}
+                      onChange={(e) => updateShift(i, { category: e.target.value })}
+                      className="mt-1.5 flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:1em_1em]"
+                      style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.5'><polyline points='6 9 12 15 18 9'/></svg>\")", paddingRight: "2.25rem" }}
+                    >
+                      <option value="">{t("employee.pickCategory")}</option>
+                      {WORK_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                      <option value="__other__">{t("employee.otherCategory")}…</option>
+                    </select>
+                  </div>
+                  {s.category === "__other__" && (
+                    <div className="sm:col-span-3">
+                      <Label>{t("employee.otherDetail")}</Label>
+                      <Input value={s.categoryOther}
+                             onChange={(e) => updateShift(i, { categoryOther: e.target.value })}
+                             maxLength={120}
+                             className="mt-1.5" />
+                    </div>
+                  )}
+                  <div className="sm:col-span-3">
+                    <Label>{t("employee.quantity")}</Label>
+                    <Input type="number" inputMode="decimal" min={0} step="any"
+                           value={s.quantity}
+                           onChange={(e) => updateShift(i, { quantity: e.target.value })}
+                           placeholder={t("employee.quantityPlaceholder")}
+                           className="mt-1.5" />
+                  </div>
                   <div className="sm:col-span-3">
                     <Label>{t("employee.notesForJob")}</Label>
                     <Textarea value={s.notes}
@@ -443,7 +545,14 @@ const EmployeePortal = () => {
                         <div className="font-medium text-sm">{formatDate(e.work_date)}</div>
                         <div className="text-xs text-muted-foreground">
                           {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {job?.name ?? "—"}
+                          {e.break_minutes ? ` · ${e.break_minutes}m break` : ""}
                         </div>
+                        {(e.work_category || e.work_quantity != null) && (
+                          <div className="text-xs text-foreground/80 mt-1">
+                            {e.work_category === "Other" ? (e.work_category_other || "Other") : e.work_category}
+                            {e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
+                          </div>
+                        )}
                         {e.notes && (
                           <div className="text-xs text-foreground/80 mt-1 italic break-words">
                             “{e.notes}”

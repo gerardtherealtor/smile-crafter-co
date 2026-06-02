@@ -348,7 +348,10 @@ export type Database = {
           notes_en: string | null
           updated_at: string
           user_id: string
+          work_category: string | null
+          work_category_other: string | null
           work_date: string
+          work_quantity: number | null
         }
         Insert: {
           break_minutes?: number
@@ -362,7 +365,10 @@ export type Database = {
           notes_en?: string | null
           updated_at?: string
           user_id: string
+          work_category?: string | null
+          work_category_other?: string | null
           work_date: string
+          work_quantity?: number | null
         }
         Update: {
           break_minutes?: number
@@ -376,7 +382,10 @@ export type Database = {
           notes_en?: string | null
           updated_at?: string
           user_id?: string
+          work_category?: string | null
+          work_category_other?: string | null
           work_date?: string
+          work_quantity?: number | null
         }
         Relationships: [
           {
