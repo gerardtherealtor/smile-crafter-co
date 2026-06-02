@@ -425,7 +425,7 @@ const EmployeeWeekDialog = ({
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display tracking-wide">{profile.full_name || profile.email}</DialogTitle>
+          <DialogTitle className="font-display tracking-wide">{displayLastFirst(profile)}</DialogTitle>
           <p className="text-sm text-muted-foreground">{profile.email}</p>
         </DialogHeader>
 
