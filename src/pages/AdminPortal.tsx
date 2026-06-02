@@ -246,6 +246,9 @@ const AdminPortal = () => {
           </div>
         </TabsContent>
       </Tabs>
+      {selectedEmployee && (
+        <EmployeeWeekDialog profile={selectedEmployee} jobs={jobs} onClose={() => setSelectedEmployee(null)} />
+      )}
     </PortalLayout>
   );
 };
