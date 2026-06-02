@@ -564,7 +564,12 @@ const RosterManager = ({
           <TableBody>
             {roster.length === 0 ? (
               <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">{t("admin.roster.empty")}</TableCell></TableRow>
-            ) : roster.map((r) => {
+            ) : [...roster].sort((a, b) => {
+              const aTest = findProfile(a)?.is_test ? 1 : 0;
+              const bTest = findProfile(b)?.is_test ? 1 : 0;
+              if (aTest !== bTest) return aTest - bTest;
+              return a.full_name.localeCompare(b.full_name);
+            }).map((r) => {
               const linked = findProfile(r);
               return (
                 <TableRow key={r.id}>
