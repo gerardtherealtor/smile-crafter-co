@@ -140,8 +140,6 @@ const AdminPortal = () => {
       toast.error(t("admin.downloadLink"));
       return;
     }
-    // Use an anchor click instead of window.open — mobile Safari/PWA blocks
-    // window.open() after an await because it's not seen as a user gesture.
     const a = document.createElement("a");
     a.href = data.signedUrl;
     a.rel = "noopener";
@@ -151,6 +149,23 @@ const AdminPortal = () => {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const [previewReport, setPreviewReport] = useState<ReportRow | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const openPreview = async (r: ReportRow) => {
+    if (!r.pdf_path) { toast.error("No PDF available for this week yet. Click 'Send Report Now' to generate it."); return; }
+    setPreviewReport(r);
+    setPreviewUrl(null);
+    const { data, error } = await supabase.storage
+      .from("weekly-reports")
+      .createSignedUrl(r.pdf_path, 60 * 10);
+    if (error || !data) {
+      toast.error(t("admin.downloadLink"));
+      setPreviewReport(null);
+      return;
+    }
+    setPreviewUrl(data.signedUrl);
   };
 
   return (
