@@ -313,7 +313,7 @@ const AdminPortal = () => {
       {selectedEmployee && (
         <EmployeeWeekDialog profile={selectedEmployee} jobs={jobs} onClose={() => setSelectedEmployee(null)} />
       )}
-      <Dialog open={!!previewReport} onOpenChange={(o) => { if (!o) { setPreviewReport(null); setPreviewUrl(null); } }}>
+      <Dialog open={!!previewReport} onOpenChange={(o) => { if (!o) { setPreviewReport(null); setPreviewUrl((prev) => { if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev); return null; }); } }}>
         <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
           <DialogHeader className="p-4 border-b border-border flex flex-row items-center justify-between space-y-0">
             <DialogTitle className="font-display tracking-wide">
