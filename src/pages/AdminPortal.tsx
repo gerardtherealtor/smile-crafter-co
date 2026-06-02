@@ -208,7 +208,7 @@ const AdminPortal = () => {
                     >
                       <TableCell>
                         <div className="font-medium group-hover:text-maple transition-colors flex items-center gap-2">
-                          {p.full_name || p.email}
+                          {displayLastFirst(p)}
                           {p.is_test && <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">Test</span>}
                         </div>
                         <div className="text-xs text-muted-foreground">{p.email}</div>
