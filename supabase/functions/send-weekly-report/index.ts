@@ -71,13 +71,27 @@ Deno.serve(async (req) => {
     const monday = body.week_start ?? isoDate(getMondayOfWeek());
     const sunday = addDays(monday, 6);
 
-    // 1. Load employees (test accounts sorted to bottom)
-    const { data: profiles, error: pErr } = await supabase
+    // Sort key: "Last First" so reports list employees by last name (test accounts pinned to bottom).
+    const lastFirstKey = (p: { full_name?: string | null; email?: string | null }) => {
+      const raw = (p.full_name || (p.email ?? "").split("@")[0] || "").trim();
+      if (!raw) return "zzz";
+      if (raw.includes(",")) return raw.toLowerCase();
+      const parts = raw.split(/\s+/).filter(Boolean);
+      if (parts.length === 1) return parts[0].toLowerCase();
+      const last = parts[parts.length - 1];
+      const first = parts.slice(0, -1).join(" ");
+      return `${last} ${first}`.toLowerCase();
+    };
+
+    // 1. Load employees
+    const { data: profilesRaw, error: pErr } = await supabase
       .from("profiles")
-      .select("id, full_name, email, phone, is_test")
-      .order("is_test", { ascending: true })
-      .order("full_name");
+      .select("id, full_name, email, phone, is_test");
     if (pErr) throw pErr;
+    const profiles = (profilesRaw ?? []).slice().sort((a: any, b: any) => {
+      if (!!a.is_test !== !!b.is_test) return a.is_test ? 1 : -1;
+      return lastFirstKey(a).localeCompare(lastFirstKey(b));
+    });
 
     // 2. Load time entries for the week
     const { data: entries, error: eErr } = await supabase
@@ -93,7 +107,7 @@ Deno.serve(async (req) => {
 
     // 3. Aggregate
     type Row = { name: string; email: string; phone: string | null; total: number; entries: any[]; isTest: boolean };
-    const rows: Row[] = (profiles ?? []).map((p) => ({
+    const rows: Row[] = profiles.map((p: any) => ({
       name: (p.full_name || p.email) + (p.is_test ? " (TEST ACCOUNT)" : ""),
       email: p.email,
       phone: p.phone,
