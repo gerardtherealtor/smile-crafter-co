@@ -102,6 +102,18 @@ const shareCsv = async (filename: string, rows: (string | number)[][]) => {
 
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
 interface Profile { id: string; full_name: string; email: string; is_test?: boolean }
+
+// Sort key: last name, first name. Falls back to email local part when name is missing.
+const lastFirstKey = (p: { full_name?: string | null; email?: string | null }) => {
+  const raw = (p.full_name || (p.email ?? "").split("@")[0] || "").trim();
+  if (!raw) return "zzz";
+  if (raw.includes(",")) return raw.toLowerCase();
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].toLowerCase();
+  const last = parts[parts.length - 1];
+  const first = parts.slice(0, -1).join(" ");
+  return `${last} ${first}`.toLowerCase();
+};
 interface TEntry {
   id: string; user_id: string; job_id: string | null; work_date: string;
   clock_in: string; clock_out: string; hours: number; notes: string | null; notes_en: string | null;
