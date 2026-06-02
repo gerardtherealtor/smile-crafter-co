@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { PortalLayout } from "@/components/PortalLayout";
@@ -13,8 +13,12 @@ import {
   formatDate, formatHours, formatTime12, splitOvertime, weekEnd, weekStart,
 } from "@/lib/time";
 import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Receipt, Tag, Trash2, Users } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InvoicingManager } from "@/components/InvoicingManager";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+
+GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean; is_test: boolean }
 
@@ -152,14 +156,11 @@ const AdminPortal = () => {
   };
 
   const [previewReport, setPreviewReport] = useState<ReportRow | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const openPreview = async (r: ReportRow) => {
     if (!r.pdf_path) { toast.error("No PDF available for this week yet. Click 'Send Report Now' to generate it."); return; }
     setPreviewReport(r);
-    setPreviewUrl((prev) => { if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev); return null; });
-    // Download the PDF as a blob and render via a same-origin blob: URL.
-    // Some browsers (Comet, strict ad-blockers) block third-party iframes loading
-    // signed Supabase Storage URLs, so we proxy via blob to keep the preview working.
+    setPreviewBlob(null);
     const { data, error } = await supabase.storage
       .from("weekly-reports")
       .download(r.pdf_path);
@@ -169,7 +170,7 @@ const AdminPortal = () => {
       return;
     }
     const blob = data.type === "application/pdf" ? data : new Blob([data], { type: "application/pdf" });
-    setPreviewUrl(URL.createObjectURL(blob));
+    setPreviewBlob(blob);
   };
 
   return (
@@ -313,25 +314,20 @@ const AdminPortal = () => {
       {selectedEmployee && (
         <EmployeeWeekDialog profile={selectedEmployee} jobs={jobs} onClose={() => setSelectedEmployee(null)} />
       )}
-      <Dialog open={!!previewReport} onOpenChange={(o) => { if (!o) { setPreviewReport(null); setPreviewUrl((prev) => { if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev); return null; }); } }}>
+      <Dialog open={!!previewReport} onOpenChange={(o) => { if (!o) { setPreviewReport(null); setPreviewBlob(null); } }}>
         <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
           <DialogHeader className="p-4 border-b border-border flex flex-row items-center justify-between space-y-0">
             <DialogTitle className="font-display tracking-wide">
               {previewReport && `${formatDate(previewReport.week_start)} – ${formatDate(previewReport.week_end)}`}
             </DialogTitle>
+            <DialogDescription className="sr-only">Weekly report PDF preview</DialogDescription>
             {previewReport?.pdf_path && (
               <Button size="sm" variant="outline" className="mr-8" onClick={() => downloadReport(previewReport.pdf_path!)}>
                 <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
               </Button>
             )}
           </DialogHeader>
-          <div className="flex-1 bg-muted overflow-hidden">
-            {previewUrl ? (
-              <iframe src={previewUrl} className="w-full h-full border-0" title="Report preview" />
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">Loading preview…</div>
-            )}
-          </div>
+          <PdfPreview file={previewBlob} />
         </DialogContent>
       </Dialog>
     </PortalLayout>
