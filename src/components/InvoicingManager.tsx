@@ -16,9 +16,12 @@ import { toast } from "sonner";
 import {
   formatDate, formatHours, formatTime12, weekEnd, weekStart,
 } from "@/lib/time";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import {
-  AlertTriangle, Archive, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight,
-  Copy, Download, FileCheck2, History, Loader2, Search, Send, Share2, Undo2, X,
+  AlertTriangle, Archive, ArrowLeft, BookmarkPlus, CheckCircle2, ChevronDown, ChevronRight,
+  Copy, Download, FileCheck2, History, Loader2, Search, Send, Share2,
+  SlidersHorizontal, Star, Trash2, Undo2, X,
 } from "lucide-react";
 
 type AuditAction =
@@ -102,6 +105,7 @@ interface Profile { id: string; full_name: string; email: string }
 interface TEntry {
   id: string; user_id: string; job_id: string | null; work_date: string;
   clock_in: string; clock_out: string; hours: number; notes: string | null; notes_en: string | null;
+  work_category: string | null; work_category_other: string | null; work_quantity: number | null;
 }
 interface InvoiceRecord {
   id: string; job_id: string; week_start: string; week_end: string;
@@ -146,6 +150,42 @@ export const InvoicingManager = ({
   const [jobFilter, setJobFilter] = useState<string>("all");
   const [rangeFilter, setRangeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [workerFilter, setWorkerFilter] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [minHours, setMinHours] = useState<string>("");
+  const [maxHours, setMaxHours] = useState<string>("");
+  const [exportStatusFilter, setExportStatusFilter] = useState<string>("all");
+  const [categories, setCategories] = useState<string[]>([]);
+
+  // Smart (saved) filter presets — persisted to localStorage per user.
+  type Preset = {
+    name: string;
+    search: string;
+    jobFilter: string;
+    rangeFilter: string;
+    sortBy: string;
+    workerFilter: string[];
+    categoryFilter: string[];
+    minHours: string;
+    maxHours: string;
+    exportStatusFilter: string;
+  };
+  const PRESETS_KEY = "invoicing.filter.presets.v1";
+  const ACTIVE_PRESET_KEY = "invoicing.filter.presets.active.v1";
+  const [presets, setPresets] = useState<Preset[]>(() => {
+    try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || "[]"); } catch { return []; }
+  });
+  const [activePreset, setActivePreset] = useState<string>(() => {
+    return localStorage.getItem(ACTIVE_PRESET_KEY) || "";
+  });
+  const [savePresetOpen, setSavePresetOpen] = useState(false);
+  const [newPresetName, setNewPresetName] = useState("");
+
+  const persistPresets = (next: Preset[]) => {
+    setPresets(next);
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(next));
+  };
+
   const [auditOpen, setAuditOpen] = useState(false);
   const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
@@ -166,18 +206,23 @@ export const InvoicingManager = ({
 
   const load = async () => {
     setLoading(true);
-    const [e, inv] = await Promise.all([
+    const [e, inv, cats] = await Promise.all([
       supabase
         .from("time_entries")
-        .select("id,user_id,job_id,work_date,clock_in,clock_out,hours,notes,notes_en")
+        .select("id,user_id,job_id,work_date,clock_in,clock_out,hours,notes,notes_en,work_category,work_category_other,work_quantity")
         .order("work_date", { ascending: false }),
       supabase
         .from("job_invoices")
         .select("id,job_id,week_start,week_end,invoiced_at,notes,status,csv_exported_at,csv_export_count")
         .order("week_start", { ascending: false }),
+      supabase
+        .from("work_categories")
+        .select("name,sort_order,is_active")
+        .order("sort_order"),
     ]);
     if (e.data) setEntries(e.data as TEntry[]);
     if (inv.data) setInvoices(inv.data as InvoiceRecord[]);
+    if (cats.data) setCategories((cats.data as { name: string; is_active: boolean }[]).filter((c) => c.is_active).map((c) => c.name));
     setLoading(false);
   };
 
@@ -302,16 +347,41 @@ export const InvoicingManager = ({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const minH = minHours.trim() === "" ? null : Number(minHours);
+    const maxH = maxHours.trim() === "" ? null : Number(maxHours);
+    const workerSet = new Set(workerFilter);
+    const catSet = new Set(categoryFilter);
     const result = groups.filter((g) => {
       if (g.stage !== view) return false;
       if (jobFilter !== "all" && g.job.id !== jobFilter) return false;
       if (rangeBounds.from && g.week_start < rangeBounds.from) return false;
       if (rangeBounds.to && g.week_start > rangeBounds.to) return false;
+      if (minH !== null && Number.isFinite(minH) && g.totalHours < minH) return false;
+      if (maxH !== null && Number.isFinite(maxH) && g.totalHours > maxH) return false;
+      if (workerSet.size > 0) {
+        let hit = false;
+        for (const wid of g.workerIds) if (workerSet.has(wid)) { hit = true; break; }
+        if (!hit) return false;
+      }
+      if (catSet.size > 0) {
+        const hit = g.entries.some((e) => {
+          if (e.work_category && catSet.has(e.work_category)) return true;
+          if (catSet.has("__other__") && (e.work_category === "Other" || !!e.work_category_other)) return true;
+          if (catSet.has("__none__") && !e.work_category) return true;
+          return false;
+        });
+        if (!hit) return false;
+      }
+      if (exportStatusFilter !== "all") {
+        const count = g.invoice?.csv_export_count ?? 0;
+        if (exportStatusFilter === "exported" && count === 0) return false;
+        if (exportStatusFilter === "not_exported" && count > 0) return false;
+      }
       if (q) {
         const hay =
           `${g.job.name} ${g.job.address ?? ""}`.toLowerCase() + " " +
           Array.from(g.workerIds).map((id) => profileName(id)).join(" ").toLowerCase() + " " +
-          g.entries.map((e) => `${e.notes_en ?? ""} ${e.notes ?? ""}`).join(" ").toLowerCase();
+          g.entries.map((e) => `${e.notes_en ?? ""} ${e.notes ?? ""} ${e.work_category ?? ""} ${e.work_category_other ?? ""}`).join(" ").toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -336,12 +406,90 @@ export const InvoicingManager = ({
           a.job.name.localeCompare(b.job.name, undefined, { numeric: true, sensitivity: "base" }));
     }
     return sorted;
-  }, [groups, view, search, jobFilter, rangeBounds, sortBy, profiles]);
+  }, [groups, view, search, jobFilter, rangeBounds, sortBy, profiles, workerFilter, categoryFilter, minHours, maxHours, exportStatusFilter]);
 
-  const hasActiveFilters = search !== "" || jobFilter !== "all" || rangeFilter !== "all" || sortBy !== "newest";
+  const activeAdvancedCount =
+    (workerFilter.length > 0 ? 1 : 0) +
+    (categoryFilter.length > 0 ? 1 : 0) +
+    (minHours.trim() !== "" ? 1 : 0) +
+    (maxHours.trim() !== "" ? 1 : 0) +
+    (exportStatusFilter !== "all" ? 1 : 0);
+
+  const hasActiveFilters =
+    search !== "" || jobFilter !== "all" || rangeFilter !== "all" || sortBy !== "newest" ||
+    activeAdvancedCount > 0;
+
   const clearFilters = () => {
     setSearch(""); setJobFilter("all"); setRangeFilter("all"); setSortBy("newest");
+    setWorkerFilter([]); setCategoryFilter([]); setMinHours(""); setMaxHours("");
+    setExportStatusFilter("all");
+    setActivePreset("");
+    localStorage.removeItem(ACTIVE_PRESET_KEY);
   };
+
+  // Workers seen in current groups for the multi-select.
+  const workersInGroups = useMemo(() => {
+    const ids = new Set<string>();
+    for (const g of groups) for (const id of g.workerIds) ids.add(id);
+    return profiles
+      .filter((p) => ids.has(p.id))
+      .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email));
+  }, [groups, profiles]);
+
+  // Categories seen in entries (union with admin list so empty categories still show)
+  const categoriesAvailable = useMemo(() => {
+    const set = new Set<string>(categories);
+    for (const g of groups) for (const e of g.entries) if (e.work_category) set.add(e.work_category);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [categories, groups]);
+
+  // ---- Smart filter presets ----
+  const applyPreset = (p: Preset) => {
+    setSearch(p.search);
+    setJobFilter(p.jobFilter);
+    setRangeFilter(p.rangeFilter);
+    setSortBy(p.sortBy);
+    setWorkerFilter(p.workerFilter || []);
+    setCategoryFilter(p.categoryFilter || []);
+    setMinHours(p.minHours || "");
+    setMaxHours(p.maxHours || "");
+    setExportStatusFilter(p.exportStatusFilter || "all");
+    setActivePreset(p.name);
+    localStorage.setItem(ACTIVE_PRESET_KEY, p.name);
+  };
+
+  const saveCurrentAsPreset = () => {
+    const name = newPresetName.trim();
+    if (!name) { toast.error("Give the filter a name"); return; }
+    const next: Preset = {
+      name, search, jobFilter, rangeFilter, sortBy,
+      workerFilter, categoryFilter, minHours, maxHours, exportStatusFilter,
+    };
+    const filtered = presets.filter((p) => p.name !== name);
+    persistPresets([...filtered, next].sort((a, b) => a.name.localeCompare(b.name)));
+    setActivePreset(name);
+    localStorage.setItem(ACTIVE_PRESET_KEY, name);
+    setNewPresetName("");
+    setSavePresetOpen(false);
+    toast.success(`Saved smart filter "${name}"`);
+  };
+
+  const deletePreset = (name: string) => {
+    persistPresets(presets.filter((p) => p.name !== name));
+    if (activePreset === name) {
+      setActivePreset("");
+      localStorage.removeItem(ACTIVE_PRESET_KEY);
+    }
+    toast.success(`Deleted "${name}"`);
+  };
+
+  // Auto-apply active preset on mount
+  useEffect(() => {
+    if (!activePreset) return;
+    const p = presets.find((x) => x.name === activePreset);
+    if (p) applyPreset(p);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const jobsInGroups = useMemo(() => {
     const ids = new Set(groups.map((g) => g.job.id));
@@ -865,19 +1013,233 @@ export const InvoicingManager = ({
             </SelectContent>
           </Select>
 
-          {hasActiveFilters ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={clearFilters}
-              className="font-display tracking-wider sm:col-span-2 lg:col-span-1 justify-center"
-            >
-              <X className="h-4 w-4" />
-              Clear
-            </Button>
-          ) : <div className="hidden lg:block" />}
+          <div className="flex gap-2 sm:col-span-2 lg:col-span-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="font-display tracking-wider flex-1 justify-center relative"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  More
+                  {activeAdvancedCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold h-5 min-w-5 px-1.5">
+                      {activeAdvancedCount}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[min(92vw,420px)] max-h-[70vh] overflow-y-auto p-4 space-y-4">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Hours range</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number" min="0" step="0.25" inputMode="decimal"
+                      placeholder="Min"
+                      value={minHours}
+                      onChange={(e) => setMinHours(e.target.value)}
+                    />
+                    <span className="text-muted-foreground text-xs">to</span>
+                    <Input
+                      type="number" min="0" step="0.25" inputMode="decimal"
+                      placeholder="Max"
+                      value={maxHours}
+                      onChange={(e) => setMaxHours(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                      Workers ({workerFilter.length || "all"})
+                    </Label>
+                    {workerFilter.length > 0 && (
+                      <button type="button" onClick={() => setWorkerFilter([])} className="text-xs underline-offset-4 hover:underline text-muted-foreground">
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="rounded-md border border-border max-h-40 overflow-y-auto p-2 space-y-1">
+                    {workersInGroups.length === 0 && (
+                      <div className="text-xs text-muted-foreground">No workers yet</div>
+                    )}
+                    {workersInGroups.map((p) => {
+                      const checked = workerFilter.includes(p.id);
+                      return (
+                        <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer rounded px-1.5 py-1 hover:bg-muted">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(c) => {
+                              setWorkerFilter((prev) => c ? [...prev, p.id] : prev.filter((x) => x !== p.id));
+                            }}
+                          />
+                          <span className="truncate">{p.full_name || p.email}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                      Work categories ({categoryFilter.length || "all"})
+                    </Label>
+                    {categoryFilter.length > 0 && (
+                      <button type="button" onClick={() => setCategoryFilter([])} className="text-xs underline-offset-4 hover:underline text-muted-foreground">
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="rounded-md border border-border max-h-48 overflow-y-auto p-2 space-y-1">
+                    {categoriesAvailable.length === 0 && (
+                      <div className="text-xs text-muted-foreground">No categories yet</div>
+                    )}
+                    {categoriesAvailable.map((name) => {
+                      const checked = categoryFilter.includes(name);
+                      return (
+                        <label key={name} className="flex items-center gap-2 text-sm cursor-pointer rounded px-1.5 py-1 hover:bg-muted">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(c) => {
+                              setCategoryFilter((prev) => c ? [...prev, name] : prev.filter((x) => x !== name));
+                            }}
+                          />
+                          <span className="truncate">{name}</span>
+                        </label>
+                      );
+                    })}
+                    <div className="border-t border-border my-1" />
+                    <label className="flex items-center gap-2 text-sm cursor-pointer rounded px-1.5 py-1 hover:bg-muted">
+                      <Checkbox
+                        checked={categoryFilter.includes("__other__")}
+                        onCheckedChange={(c) => {
+                          setCategoryFilter((prev) => c ? [...prev, "__other__"] : prev.filter((x) => x !== "__other__"));
+                        }}
+                      />
+                      <span className="italic text-muted-foreground">Other (free text)</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer rounded px-1.5 py-1 hover:bg-muted">
+                      <Checkbox
+                        checked={categoryFilter.includes("__none__")}
+                        onCheckedChange={(c) => {
+                          setCategoryFilter((prev) => c ? [...prev, "__none__"] : prev.filter((x) => x !== "__none__"));
+                        }}
+                      />
+                      <span className="italic text-muted-foreground">No category set</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">CSV export status</Label>
+                  <Select value={exportStatusFilter} onValueChange={setExportStatusFilter}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any</SelectItem>
+                      <SelectItem value="exported">Already exported</SelectItem>
+                      <SelectItem value="not_exported">Not exported yet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover open={savePresetOpen} onOpenChange={setSavePresetOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="font-display tracking-wider"
+                  title="Smart filters"
+                >
+                  <Star className={`h-4 w-4 ${activePreset ? "fill-current text-primary" : ""}`} />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[min(92vw,340px)] p-3 space-y-3">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Saved smart filters</Label>
+                  {presets.length === 0 ? (
+                    <div className="text-xs text-muted-foreground mt-2">No saved filters yet. Set up filters and save them below.</div>
+                  ) : (
+                    <div className="mt-1 space-y-1 max-h-48 overflow-y-auto">
+                      {presets.map((p) => (
+                        <div key={p.name} className={`flex items-center gap-1 rounded-md border px-2 py-1.5 ${activePreset === p.name ? "border-primary bg-primary/5" : "border-border"}`}>
+                          <button
+                            type="button"
+                            onClick={() => applyPreset(p)}
+                            className="flex-1 text-left text-sm truncate hover:underline underline-offset-4"
+                          >
+                            {p.name}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deletePreset(p.name)}
+                            className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-muted"
+                            aria-label={`Delete ${p.name}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="border-t border-border pt-3 space-y-2">
+                  <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Save current filters as…</Label>
+                  <Input
+                    placeholder="e.g. This week unbilled"
+                    value={newPresetName}
+                    onChange={(e) => setNewPresetName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveCurrentAsPreset(); }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={saveCurrentAsPreset}
+                    disabled={!newPresetName.trim()}
+                    className="w-full font-display tracking-wider"
+                  >
+                    <BookmarkPlus className="h-4 w-4" /> Save smart filter
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="font-display tracking-wider"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
+
+        {activePreset && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-2.5 py-1">
+              <Star className="h-3 w-3 fill-current" />
+              Smart filter: <span className="font-semibold">{activePreset}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => { setActivePreset(""); localStorage.removeItem(ACTIVE_PRESET_KEY); }}
+              className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+            >
+              detach
+            </button>
+          </div>
+        )}
+
 
         <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
