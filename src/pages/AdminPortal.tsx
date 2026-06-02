@@ -16,7 +16,7 @@ import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Pl
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InvoicingManager } from "@/components/InvoicingManager";
 
-interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean }
+interface Profile { id: string; full_name: string; email: string; phone: string | null; is_active: boolean; is_test: boolean }
 interface Job { id: string; name: string; address: string | null; is_active: boolean }
 interface EntryRow { user_id: string; hours: number; work_date: string }
 interface ReportRow { id: string; week_start: string; week_end: string; pdf_path: string | null; total_regular_hours: number; total_overtime_hours: number; generated_at: string }
