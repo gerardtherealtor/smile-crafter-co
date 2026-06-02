@@ -309,6 +309,27 @@ const AdminPortal = () => {
       {selectedEmployee && (
         <EmployeeWeekDialog profile={selectedEmployee} jobs={jobs} onClose={() => setSelectedEmployee(null)} />
       )}
+      <Dialog open={!!previewReport} onOpenChange={(o) => { if (!o) { setPreviewReport(null); setPreviewUrl(null); } }}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-4 border-b border-border flex flex-row items-center justify-between space-y-0">
+            <DialogTitle className="font-display tracking-wide">
+              {previewReport && `${formatDate(previewReport.week_start)} – ${formatDate(previewReport.week_end)}`}
+            </DialogTitle>
+            {previewReport?.pdf_path && (
+              <Button size="sm" variant="outline" className="mr-8" onClick={() => downloadReport(previewReport.pdf_path!)}>
+                <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
+              </Button>
+            )}
+          </DialogHeader>
+          <div className="flex-1 bg-muted overflow-hidden">
+            {previewUrl ? (
+              <iframe src={previewUrl} className="w-full h-full border-0" title="Report preview" />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">Loading preview…</div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </PortalLayout>
   );
 };
