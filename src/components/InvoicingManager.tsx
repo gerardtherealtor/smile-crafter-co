@@ -16,9 +16,12 @@ import { toast } from "sonner";
 import {
   formatDate, formatHours, formatTime12, weekEnd, weekStart,
 } from "@/lib/time";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import {
-  AlertTriangle, Archive, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight,
-  Copy, Download, FileCheck2, History, Loader2, Search, Send, Share2, Undo2, X,
+  AlertTriangle, Archive, ArrowLeft, BookmarkPlus, CheckCircle2, ChevronDown, ChevronRight,
+  Copy, Download, FileCheck2, Filter, History, Loader2, Save, Search, Send, Share2,
+  SlidersHorizontal, Star, Trash2, Undo2, X,
 } from "lucide-react";
 
 type AuditAction =
