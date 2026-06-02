@@ -278,15 +278,25 @@ const AdminPortal = () => {
                 {reports.length === 0 ? (
                   <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{t("admin.noReports")}</TableCell></TableRow>
                 ) : reports.map((r) => (
-                  <TableRow key={r.id}>
+                  <TableRow
+                    key={r.id}
+                    onClick={() => r.pdf_path && openPreview(r)}
+                    className={r.pdf_path ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+                    title={r.pdf_path ? "Click to preview report" : ""}
+                  >
                     <TableCell>{formatDate(r.week_start)} – {formatDate(r.week_end)}</TableCell>
                     <TableCell className="text-right font-display">{formatHours(Number(r.total_regular_hours))}</TableCell>
                     <TableCell className="text-right font-display text-maple">{formatHours(Number(r.total_overtime_hours))}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       {r.pdf_path ? (
-                        <Button size="sm" variant="outline" onClick={() => downloadReport(r.pdf_path!)}>
-                          <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => openPreview(r)}>
+                            Preview
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => downloadReport(r.pdf_path!)}>
+                            <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
+                          </Button>
+                        </div>
                       ) : <span className="text-muted-foreground text-sm">{t("common.emDash")}</span>}
                     </TableCell>
                   </TableRow>
