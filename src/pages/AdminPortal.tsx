@@ -561,4 +561,127 @@ const RosterManager = ({
   );
 };
 
+interface WorkCategory { id: string; name: string; sort_order: number; is_active: boolean }
+
+const CategoriesManager = () => {
+  const [cats, setCats] = useState<WorkCategory[]>([]);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("work_categories")
+      .select("id,name,sort_order,is_active")
+      .order("sort_order")
+      .order("name");
+    setCats((data ?? []) as WorkCategory[]);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setBusy(true);
+    const maxOrder = cats.reduce((m, c) => Math.max(m, c.sort_order), 0);
+    const { error } = await supabase
+      .from("work_categories")
+      .insert({ name: trimmed, sort_order: maxOrder + 10 });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setName(""); toast.success("Category added"); load();
+  };
+
+  const toggle = async (c: WorkCategory) => {
+    const { error } = await supabase
+      .from("work_categories")
+      .update({ is_active: !c.is_active })
+      .eq("id", c.id);
+    if (error) toast.error(error.message); else load();
+  };
+
+  const rename = async (c: WorkCategory) => {
+    const next = window.prompt("Rename category", c.name);
+    if (!next || next.trim() === c.name) return;
+    const { error } = await supabase
+      .from("work_categories")
+      .update({ name: next.trim() })
+      .eq("id", c.id);
+    if (error) toast.error(error.message); else { toast.success("Renamed"); load(); }
+  };
+
+  const remove = async (c: WorkCategory) => {
+    if (!confirm(`Remove "${c.name}"? Past time entries keep this category as text.`)) return;
+    const { error } = await supabase.from("work_categories").delete().eq("id", c.id);
+    if (error) toast.error(error.message); else { toast.success("Removed"); load(); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-deep">
+        <p className="text-sm text-muted-foreground mb-3">
+          Categories show up in the "What did you work on" dropdown on the My Time screen. Add new ones as work types come up.
+        </p>
+        <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-3">
+          <Input
+            placeholder="New category name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={120}
+            required
+          />
+          <Button
+            type="submit"
+            disabled={busy}
+            className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider"
+          >
+            <Plus className="h-4 w-4 mr-1.5" /> Add
+          </Button>
+        </form>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card shadow-deep overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Category</TableHead>
+              <TableHead className="text-right">Status</TableHead>
+              <TableHead className="text-right">Rename</TableHead>
+              <TableHead className="text-right">Remove</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
+            ) : cats.length === 0 ? (
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No categories yet.</TableCell></TableRow>
+            ) : cats.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell className="font-medium">{c.name}</TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant={c.is_active ? "outline" : "secondary"} onClick={() => toggle(c)}>
+                    {c.is_active ? "Active" : "Hidden"}
+                  </Button>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="ghost" onClick={() => rename(c)}>Edit</Button>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="ghost" onClick={() => remove(c)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
+
 export default AdminPortal;
