@@ -375,7 +375,7 @@ const PdfPreview = ({ file }: { file: Blob | null }) => {
           context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
           container.appendChild(canvas);
 
-          await page.render({ canvasContext: context, viewport }).promise;
+          await page.render({ canvas, canvasContext: context, viewport }).promise;
         }
 
         if (!cancelled) setStatus("");
