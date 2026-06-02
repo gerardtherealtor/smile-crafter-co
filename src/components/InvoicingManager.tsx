@@ -186,7 +186,6 @@ export const InvoicingManager = ({
     localStorage.setItem(PRESETS_KEY, JSON.stringify(next));
   };
 
-  const auditOpen_unused = false; void auditOpen_unused; // keep type-checker friendly
   const [auditOpen, setAuditOpen] = useState(false);
   const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
