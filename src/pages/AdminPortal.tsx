@@ -334,6 +334,72 @@ const AdminPortal = () => {
   );
 };
 
+const PdfPreview = ({ file }: { file: Blob | null }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [status, setStatus] = useState("Loading preview…");
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.innerHTML = "";
+    if (!file) {
+      setStatus("Loading preview…");
+      return;
+    }
+
+    let cancelled = false;
+    setStatus("Rendering preview…");
+
+    const renderPdf = async () => {
+      try {
+        const data = await file.arrayBuffer();
+        const pdf = await getDocument({ data }).promise;
+        const wrapperWidth = Math.max(container.clientWidth - 32, 320);
+        const pixelRatio = window.devicePixelRatio || 1;
+
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+          if (cancelled) return;
+          const page = await pdf.getPage(pageNumber);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const scale = Math.min(1.5, Math.max(0.8, wrapperWidth / baseViewport.width));
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          if (!context) continue;
+
+          canvas.width = Math.floor(viewport.width * pixelRatio);
+          canvas.height = Math.floor(viewport.height * pixelRatio);
+          canvas.style.width = `${Math.floor(viewport.width)}px`;
+          canvas.style.height = `${Math.floor(viewport.height)}px`;
+          canvas.className = "mx-auto my-4 block bg-background shadow-deep";
+          context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+          container.appendChild(canvas);
+
+          await page.render({ canvasContext: context, viewport }).promise;
+        }
+
+        if (!cancelled) setStatus("");
+      } catch (error) {
+        console.error("Report preview failed", error);
+        if (!cancelled) setStatus("Preview failed. Please use Download instead.");
+      }
+    };
+
+    renderPdf();
+
+    return () => {
+      cancelled = true;
+      container.innerHTML = "";
+    };
+  }, [file]);
+
+  return (
+    <div ref={containerRef} className="flex-1 bg-muted overflow-auto p-4">
+      {status && <div className="flex h-full items-center justify-center text-muted-foreground">{status}</div>}
+    </div>
+  );
+};
+
 const BigStat = ({ label, value, accent }: { label: string; value: string; accent?: boolean }) => (
   <div className={`rounded-xl border p-4 sm:p-5 ${accent ? "border-maple/40 bg-maple/10" : "border-border bg-card"}`}>
     <div className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
