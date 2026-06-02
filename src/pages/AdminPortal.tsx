@@ -167,16 +167,15 @@ const AdminPortal = () => {
                   ) : perEmployee.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No employees yet.</TableCell></TableRow>
                   ) : perEmployee.map((p) => (
-                    <TableRow key={p.id}>
+                    <TableRow
+                      key={p.id}
+                      onClick={() => setSelectedEmployee(p)}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      title={t("admin.roster.viewHours")}
+                    >
                       <TableCell>
-                        <button
-                          onClick={() => setSelectedEmployee(p)}
-                          className="text-left hover:text-maple transition-colors"
-                          title={t("admin.roster.viewHours")}
-                        >
-                          <div className="font-medium">{p.full_name || p.email}</div>
-                          <div className="text-xs text-muted-foreground">{p.email}</div>
-                        </button>
+                        <div className="font-medium group-hover:text-maple transition-colors">{p.full_name || p.email}</div>
+                        <div className="text-xs text-muted-foreground">{p.email}</div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground">{p.phone ?? "—"}</TableCell>
                       <TableCell className="text-right font-display">{formatHours(p.regular)}</TableCell>
