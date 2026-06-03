@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { UpdateAvailableBanner } from "@/components/UpdateAvailableBanner";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import EmployeePortal from "./pages/EmployeePortal.tsx";
@@ -23,6 +24,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <UpdateAvailableBanner />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />

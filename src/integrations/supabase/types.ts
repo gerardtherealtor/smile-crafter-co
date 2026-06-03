@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_release_config: {
+        Row: {
+          android_update_url: string
+          created_at: string
+          id: string
+          ios_update_url: string
+          latest_version: string
+          updated_at: string
+        }
+        Insert: {
+          android_update_url: string
+          created_at?: string
+          id?: string
+          ios_update_url: string
+          latest_version: string
+          updated_at?: string
+        }
+        Update: {
+          android_update_url?: string
+          created_at?: string
+          id?: string
+          ios_update_url?: string
+          latest_version?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
