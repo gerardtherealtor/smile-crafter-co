@@ -175,17 +175,6 @@ const EmployeePortal = () => {
         work_quantity: qty !== null && !Number.isNaN(qty) ? qty : null,
       };
     }));
-    // Replace today's existing entries with the new set
-    const { error: delError } = await supabase
-      .from("time_entries")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("work_date", date);
-    if (delError) {
-      setSaving(false);
-      toast.error(delError.message);
-      return;
-    }
     const { error } = await supabase.from("time_entries").insert(rows);
     setSaving(false);
     if (error) {
