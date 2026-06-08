@@ -362,6 +362,7 @@ const EmployeePortal = () => {
               <Input
                 type="date"
                 value={date}
+                min={monday}
                 max={maxDate}
                 onChange={(e) => setDate(e.target.value || todayISO())}
                 className="mt-1.5"
