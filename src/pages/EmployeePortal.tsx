@@ -560,7 +560,35 @@ const EmployeePortal = () => {
           </div>
 
           <div className="rounded-xl border border-border bg-card p-5 shadow-deep">
-            <h3 className="font-display text-sm uppercase tracking-widest text-muted-foreground mb-3">{t("employee.dailyLog")}</h3>
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <h3 className="font-display text-sm uppercase tracking-widest text-muted-foreground">{t("employee.dailyLog")}</h3>
+              <div className="flex items-center gap-1">
+                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0"
+                        onClick={() => {
+                          const [y, m, d] = viewWeek.split("-").map(Number);
+                          const dt = new Date(y, m - 1, d);
+                          dt.setDate(dt.getDate() - 7);
+                          const pad = (n: number) => String(n).padStart(2, "0");
+                          setViewWeek(`${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`);
+                        }}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="text-xs text-muted-foreground min-w-[110px] text-center">
+                  {formatDate(viewWeek)} – {formatDate(viewSunday)}
+                </div>
+                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0"
+                        disabled={isCurrentWeek}
+                        onClick={() => {
+                          const [y, m, d] = viewWeek.split("-").map(Number);
+                          const dt = new Date(y, m - 1, d);
+                          dt.setDate(dt.getDate() + 7);
+                          const pad = (n: number) => String(n).padStart(2, "0");
+                          setViewWeek(`${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`);
+                        }}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
             {loading ? (
               <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
             ) : entries.length === 0 ? (
@@ -589,7 +617,16 @@ const EmployeePortal = () => {
                           </div>
                         )}
                       </div>
-                      <div className="font-display text-lg text-maple shrink-0">{formatHours(Number(e.hours))}</div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="font-display text-lg text-maple">{formatHours(Number(e.hours))}</div>
+                        {isCurrentWeek && (
+                          <Button type="button" variant="ghost" size="sm"
+                                  onClick={() => deleteEntry(e.id)}
+                                  className="h-8 px-2 text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </li>
                   );
                 })}
