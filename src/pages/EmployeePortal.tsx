@@ -39,6 +39,9 @@ const EmployeePortal = () => {
 
   const monday = useMemo(() => weekStart(), []);
   const sunday = useMemo(() => weekEnd(monday), [monday]);
+  const [viewWeek, setViewWeek] = useState<string>(monday);
+  const viewSunday = useMemo(() => weekEnd(viewWeek), [viewWeek]);
+  const isCurrentWeek = viewWeek === monday;
 
   // form — date editable in case employee forgot to log a previous day
   const [date, setDate] = useState<string>(todayISO());
