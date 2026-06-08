@@ -493,12 +493,49 @@ const EmployeePortal = () => {
           )}
 
 
+          {dateEntries.length > 0 && (
+            <div className="mt-5 rounded-lg border border-border bg-background/40 p-4">
+              <div className="font-display text-sm uppercase tracking-widest text-muted-foreground mb-2">
+                Already logged for {formatDate(date)}
+              </div>
+              <ul className="divide-y divide-border">
+                {dateEntries.map((e) => {
+                  const job = jobs.find((j) => j.id === e.job_id);
+                  const cat = e.work_category === "Other" ? (e.work_category_other || "Other") : e.work_category;
+                  return (
+                    <li key={e.id} className="py-2 flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm">
+                          {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {job?.name ?? "—"}
+                        </div>
+                        {(cat || e.work_quantity != null) && (
+                          <div className="text-xs text-foreground/80">
+                            {cat}{e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="font-display text-base text-maple">{formatHours(Number(e.hours))}</div>
+                        <Button type="button" variant="ghost" size="sm"
+                                onClick={() => deleteEntry(e.id)}
+                                className="h-8 px-2 text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
           <Button type="submit" disabled={saving}
                   className="w-full mt-5 h-12 bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider text-base">
             <Save className="h-5 w-5 mr-2" />
             {saving ? t("employee.saving") : t("employee.saveHours")}
           </Button>
         </form>
+        )}
 
         {/* Week summary */}
         <div className="lg:col-span-2 space-y-5">
