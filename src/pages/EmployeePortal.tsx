@@ -16,7 +16,7 @@ import {
   computeHours, formatDate, formatHours, formatTime12, splitOvertime,
   todayISO, weekEnd, weekStart,
 } from "@/lib/time";
-import { Clock, Save, Calendar, FileDown, FileText, Plus, Trash2 } from "lucide-react";
+import { Clock, Save, Calendar, FileDown, FileText, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import jsPDF from "jspdf";
 
 interface Job { id: string; name: string }
