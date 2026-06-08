@@ -98,7 +98,20 @@ const EmployeePortal = () => {
     setLoading(false);
   };
 
-  useEffect(() => { loadData(); /* eslint-disable-next-line */ }, [user]);
+  useEffect(() => { loadData(); /* eslint-disable-next-line */ }, [user, viewWeek]);
+
+  const deleteEntry = async (entryId: string) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("time_entries")
+      .delete()
+      .eq("id", entryId)
+      .eq("user_id", user.id);
+    if (error) { toast.error(error.message); }
+    else { toast.success("Entry removed"); await loadData(); }
+  };
+
+  const dateEntries = entries.filter((e) => e.work_date === date);
 
   const totals = useMemo(() => {
     const total = entries.reduce((sum, e) => sum + Number(e.hours), 0);
