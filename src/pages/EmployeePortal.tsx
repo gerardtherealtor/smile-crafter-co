@@ -347,6 +347,16 @@ const EmployeePortal = () => {
     >
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Entry form */}
+        {!isCurrentWeek ? (
+          <div className="lg:col-span-3 rounded-xl border border-maple/40 bg-maple/10 p-6 shadow-deep flex items-center justify-center text-center">
+            <div>
+              <div className="font-display text-lg uppercase tracking-wide text-maple mb-1">
+                Viewing {formatDate(viewWeek)} – {formatDate(viewSunday)}
+              </div>
+              <div className="text-sm text-muted-foreground">Past weeks are read-only</div>
+            </div>
+          </div>
+        ) : (
         <form
           onSubmit={submit}
           className="lg:col-span-3 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-deep"
