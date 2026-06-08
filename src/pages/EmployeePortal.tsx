@@ -16,7 +16,7 @@ import {
   computeHours, formatDate, formatHours, formatTime12, splitOvertime,
   todayISO, weekEnd, weekStart,
 } from "@/lib/time";
-import { Clock, Save, Calendar, FileDown, FileText, Plus, Trash2 } from "lucide-react";
+import { Clock, Save, Calendar, FileDown, FileText, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import jsPDF from "jspdf";
 
 interface Job { id: string; name: string }
@@ -39,6 +39,9 @@ const EmployeePortal = () => {
 
   const monday = useMemo(() => weekStart(), []);
   const sunday = useMemo(() => weekEnd(monday), [monday]);
+  const [viewWeek, setViewWeek] = useState<string>(monday);
+  const viewSunday = useMemo(() => weekEnd(viewWeek), [viewWeek]);
+  const isCurrentWeek = viewWeek === monday;
 
   // form — date editable in case employee forgot to log a previous day
   const [date, setDate] = useState<string>(todayISO());
@@ -75,8 +78,8 @@ const EmployeePortal = () => {
       supabase.from("time_entries")
         .select("id,work_date,clock_in,clock_out,break_minutes,hours,job_id,notes,work_category,work_category_other,work_quantity")
         .eq("user_id", user.id)
-        .gte("work_date", monday)
-        .lte("work_date", sunday)
+        .gte("work_date", viewWeek)
+        .lte("work_date", viewSunday)
         .order("work_date", { ascending: false }),
       supabase.from("work_categories").select("name,sort_order").eq("is_active", true).order("sort_order"),
     ]);
@@ -95,7 +98,20 @@ const EmployeePortal = () => {
     setLoading(false);
   };
 
-  useEffect(() => { loadData(); /* eslint-disable-next-line */ }, [user]);
+  useEffect(() => { loadData(); /* eslint-disable-next-line */ }, [user, viewWeek]);
+
+  const deleteEntry = async (entryId: string) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("time_entries")
+      .delete()
+      .eq("id", entryId)
+      .eq("user_id", user.id);
+    if (error) { toast.error(error.message); }
+    else { toast.success("Entry removed"); await loadData(); }
+  };
+
+  const dateEntries = entries.filter((e) => e.work_date === date);
 
   const totals = useMemo(() => {
     const total = entries.reduce((sum, e) => sum + Number(e.hours), 0);
@@ -159,17 +175,6 @@ const EmployeePortal = () => {
         work_quantity: qty !== null && !Number.isNaN(qty) ? qty : null,
       };
     }));
-    // Replace today's existing entries with the new set
-    const { error: delError } = await supabase
-      .from("time_entries")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("work_date", date);
-    if (delError) {
-      setSaving(false);
-      toast.error(delError.message);
-      return;
-    }
     const { error } = await supabase.from("time_entries").insert(rows);
     setSaving(false);
     if (error) {
@@ -342,6 +347,16 @@ const EmployeePortal = () => {
     >
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Entry form */}
+        {!isCurrentWeek ? (
+          <div className="lg:col-span-3 rounded-xl border border-maple/40 bg-maple/10 p-6 shadow-deep flex items-center justify-center text-center">
+            <div>
+              <div className="font-display text-lg uppercase tracking-wide text-maple mb-1">
+                Viewing {formatDate(viewWeek)} – {formatDate(viewSunday)}
+              </div>
+              <div className="text-sm text-muted-foreground">Past weeks are read-only</div>
+            </div>
+          </div>
+        ) : (
         <form
           onSubmit={submit}
           className="lg:col-span-3 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-deep"
@@ -357,6 +372,7 @@ const EmployeePortal = () => {
               <Input
                 type="date"
                 value={date}
+                min={monday}
                 max={maxDate}
                 onChange={(e) => setDate(e.target.value || todayISO())}
                 className="mt-1.5"
@@ -477,12 +493,49 @@ const EmployeePortal = () => {
           )}
 
 
+          {dateEntries.length > 0 && (
+            <div className="mt-5 rounded-lg border border-border bg-background/40 p-4">
+              <div className="font-display text-sm uppercase tracking-widest text-muted-foreground mb-2">
+                Already logged for {formatDate(date)}
+              </div>
+              <ul className="divide-y divide-border">
+                {dateEntries.map((e) => {
+                  const job = jobs.find((j) => j.id === e.job_id);
+                  const cat = e.work_category === "Other" ? (e.work_category_other || "Other") : e.work_category;
+                  return (
+                    <li key={e.id} className="py-2 flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm">
+                          {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {job?.name ?? "—"}
+                        </div>
+                        {(cat || e.work_quantity != null) && (
+                          <div className="text-xs text-foreground/80">
+                            {cat}{e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="font-display text-base text-maple">{formatHours(Number(e.hours))}</div>
+                        <Button type="button" variant="ghost" size="sm"
+                                onClick={() => deleteEntry(e.id)}
+                                className="h-8 px-2 text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
           <Button type="submit" disabled={saving}
                   className="w-full mt-5 h-12 bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider text-base">
             <Save className="h-5 w-5 mr-2" />
             {saving ? t("employee.saving") : t("employee.saveHours")}
           </Button>
         </form>
+        )}
 
         {/* Week summary */}
         <div className="lg:col-span-2 space-y-5">
@@ -507,7 +560,35 @@ const EmployeePortal = () => {
           </div>
 
           <div className="rounded-xl border border-border bg-card p-5 shadow-deep">
-            <h3 className="font-display text-sm uppercase tracking-widest text-muted-foreground mb-3">{t("employee.dailyLog")}</h3>
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <h3 className="font-display text-sm uppercase tracking-widest text-muted-foreground">{t("employee.dailyLog")}</h3>
+              <div className="flex items-center gap-1">
+                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0"
+                        onClick={() => {
+                          const [y, m, d] = viewWeek.split("-").map(Number);
+                          const dt = new Date(y, m - 1, d);
+                          dt.setDate(dt.getDate() - 7);
+                          const pad = (n: number) => String(n).padStart(2, "0");
+                          setViewWeek(`${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`);
+                        }}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="text-xs text-muted-foreground min-w-[110px] text-center">
+                  {formatDate(viewWeek)} – {formatDate(viewSunday)}
+                </div>
+                <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0"
+                        disabled={isCurrentWeek}
+                        onClick={() => {
+                          const [y, m, d] = viewWeek.split("-").map(Number);
+                          const dt = new Date(y, m - 1, d);
+                          dt.setDate(dt.getDate() + 7);
+                          const pad = (n: number) => String(n).padStart(2, "0");
+                          setViewWeek(`${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`);
+                        }}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
             {loading ? (
               <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
             ) : entries.length === 0 ? (
@@ -536,7 +617,16 @@ const EmployeePortal = () => {
                           </div>
                         )}
                       </div>
-                      <div className="font-display text-lg text-maple shrink-0">{formatHours(Number(e.hours))}</div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="font-display text-lg text-maple">{formatHours(Number(e.hours))}</div>
+                        {isCurrentWeek && (
+                          <Button type="button" variant="ghost" size="sm"
+                                  onClick={() => deleteEntry(e.id)}
+                                  className="h-8 px-2 text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </li>
                   );
                 })}
