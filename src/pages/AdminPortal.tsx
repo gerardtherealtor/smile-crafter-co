@@ -87,7 +87,7 @@ const AdminPortal = () => {
       supabase.from("jobs").select("id,name,address,is_active").order("name"),
       supabase.from("time_entries")
         .select("user_id,hours,work_date")
-        .gte("work_date", monday).lte("work_date", sunday),
+        .gte("work_date", viewWeek).lte("work_date", viewSunday),
       supabase.from("weekly_reports").select("id,week_start,week_end,pdf_path,total_regular_hours,total_overtime_hours,generated_at")
         .order("week_start", { ascending: false }).limit(20),
       supabase.from("roster").select("id,full_name,is_active,linked_profile_id").order("full_name"),
@@ -190,7 +190,7 @@ const AdminPortal = () => {
   return (
     <PortalLayout
       title={t("admin.title")}
-      subtitle={t("employee.subtitle", { range: `${formatDate(monday)} – ${formatDate(sunday)}` })}
+      subtitle={t("employee.subtitle", { range: `${formatDate(viewWeek)} – ${formatDate(viewSunday)}` })}
     >
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="mb-6 flex-wrap h-auto">
