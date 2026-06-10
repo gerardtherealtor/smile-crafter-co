@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { InvoicingManager } from "@/components/InvoicingManager";
 import { PeopleManager } from "@/components/PeopleManager";
 import { TableRowSkeleton, StackedSkeleton } from "@/components/Skeletons";
-import { Users2, AlertTriangle, ChevronLeft as CL2, ChevronRight as CR2 } from "lucide-react";
+import { Users2, AlertTriangle } from "lucide-react";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
