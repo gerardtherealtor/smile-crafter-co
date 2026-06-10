@@ -624,47 +624,64 @@ const EmployeePortal = () => {
               </div>
             </div>
             {loading ? (
-              <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
+              <EntryRowSkeleton rows={4} />
             ) : entries.length === 0 ? (
               <div className="text-sm text-muted-foreground">{t("employee.nothingThisWeek")}</div>
             ) : (
-              <ul className="divide-y divide-border">
-                {entries.map((e) => {
-                  const job = jobs.find((j) => j.id === e.job_id);
-                  return (
-                    <li key={e.id} className="py-2.5 flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-sm">{formatDate(e.work_date)}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {job?.name ?? "—"}
-                          {e.break_minutes ? ` · ${e.break_minutes}m break` : ""}
+              <PullToRefresh onRefresh={loadData}>
+                <ul className="divide-y divide-border">
+                  {entries.map((e) => {
+                    const job = jobs.find((j) => j.id === e.job_id);
+                    const rowContent = (
+                      <div className="py-2.5 px-1 flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-sm">{formatDate(e.work_date)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {job?.name ?? "—"}
+                            {e.break_minutes ? ` · ${e.break_minutes}m break` : ""}
+                          </div>
+                          {(e.work_category || e.work_quantity != null) && (
+                            <div className="text-xs text-foreground/80 mt-1">
+                              {e.work_category === "Other" ? (e.work_category_other || "Other") : e.work_category}
+                              {e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
+                            </div>
+                          )}
+                          {e.notes && (
+                            <div className="text-xs text-foreground/80 mt-1 italic break-words">
+                              “{e.notes}”
+                            </div>
+                          )}
                         </div>
-                        {(e.work_category || e.work_quantity != null) && (
-                          <div className="text-xs text-foreground/80 mt-1">
-                            {e.work_category === "Other" ? (e.work_category_other || "Other") : e.work_category}
-                            {e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
-                          </div>
-                        )}
-                        {e.notes && (
-                          <div className="text-xs text-foreground/80 mt-1 italic break-words">
-                            “{e.notes}”
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="font-display text-lg text-maple">{formatHours(Number(e.hours))}</div>
+                          {isCurrentWeek && (
+                            <Button type="button" variant="ghost" size="sm"
+                                    onClick={() => deleteEntry(e.id)}
+                                    className="h-8 px-2 text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="font-display text-lg text-maple">{formatHours(Number(e.hours))}</div>
-                        {isCurrentWeek && (
-                          <Button type="button" variant="ghost" size="sm"
-                                  onClick={() => deleteEntry(e.id)}
-                                  className="h-8 px-2 text-destructive hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                    );
+                    return (
+                      <li key={e.id}>
+                        {isCurrentWeek ? (
+                          <SwipeRow
+                            onDelete={() => deleteEntry(e.id)}
+                            onEdit={() => editEntry(e)}
+                            deleteConfirmMessage={t("employee.confirmDelete") || "Delete this entry?"}
+                          >
+                            {rowContent}
+                          </SwipeRow>
+                        ) : (
+                          rowContent
                         )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </PullToRefresh>
             )}
           </div>
         </div>
