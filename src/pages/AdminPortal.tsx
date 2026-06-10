@@ -136,9 +136,10 @@ const AdminPortal = () => {
     });
     setEmailingCsv(false);
     if (error || (data as any)?.error) {
-      toast.error(error?.message || (data as any)?.error || "Failed to send CSV");
+      toast.error(error?.message || (data as any)?.error || t("adminExtra.csvFailed"));
     } else {
-      toast.success(`CSV emailed${(data as any)?.recipient ? ` to ${(data as any).recipient}` : ""}`);
+      const to = (data as any)?.recipient;
+      toast.success(to ? t("adminExtra.csvSentTo", { to }) : t("adminExtra.csvSent"));
     }
   };
 
@@ -188,7 +189,7 @@ const AdminPortal = () => {
   const [previewReport, setPreviewReport] = useState<ReportRow | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const openPreview = async (r: ReportRow) => {
-    if (!r.pdf_path) { toast.error("No PDF available for this week yet. Click 'Send Report Now' to generate it."); return; }
+    if (!r.pdf_path) { toast.error(t("adminExtra.noPdfYet")); return; }
     setPreviewReport(r);
     setPreviewBlob(null);
     const { data, error } = await supabase.storage
@@ -214,9 +215,9 @@ const AdminPortal = () => {
           <TabsTrigger value="invoicing" className="font-display tracking-wider"><Receipt className="h-4 w-4 mr-1.5" />{t("admin.tabs.invoicing")}</TabsTrigger>
           <TabsTrigger value="roster" className="font-display tracking-wider"><ClipboardList className="h-4 w-4 mr-1.5" />{t("admin.tabs.roster")}</TabsTrigger>
           <TabsTrigger value="jobs" className="font-display tracking-wider"><Briefcase className="h-4 w-4 mr-1.5" />{t("admin.tabs.jobs")}</TabsTrigger>
-          <TabsTrigger value="categories" className="font-display tracking-wider"><Tag className="h-4 w-4 mr-1.5" />Categories</TabsTrigger>
+          <TabsTrigger value="categories" className="font-display tracking-wider"><Tag className="h-4 w-4 mr-1.5" />{t("categories.tabLabel")}</TabsTrigger>
           <TabsTrigger value="reports" className="font-display tracking-wider"><FileDown className="h-4 w-4 mr-1.5" />{t("admin.tabs.reports")}</TabsTrigger>
-          <TabsTrigger value="people" className="font-display tracking-wider"><Users2 className="h-4 w-4 mr-1.5" />People</TabsTrigger>
+          <TabsTrigger value="people" className="font-display tracking-wider"><Users2 className="h-4 w-4 mr-1.5" />{t("people.title")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="week" className="space-y-5">
@@ -227,7 +228,7 @@ const AdminPortal = () => {
             </Button>
             <div className="text-center">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                {isCurrentWeek ? "Current week" : "Viewing week"}
+                {isCurrentWeek ? t("adminExtra.currentWeek") : t("adminExtra.viewingWeek")}
               </div>
               <div className="font-display tracking-wide text-sm sm:text-base">
                 {formatDate(viewWeek)} – {formatDate(viewSunday)}
@@ -236,7 +237,7 @@ const AdminPortal = () => {
             <div className="flex items-center gap-1">
               {!isCurrentWeek && (
                 <Button type="button" variant="outline" size="sm" onClick={() => setViewWeek(monday)} className="hidden sm:inline-flex">
-                  Today
+                  {t("adminExtra.today")}
                 </Button>
               )}
               <Button type="button" variant="ghost" size="sm" onClick={() => shiftWeek(1)} disabled={isCurrentWeek} className="h-9 w-9 p-0">
@@ -246,9 +247,9 @@ const AdminPortal = () => {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <BigStat label="Total" value={formatHours(grandTotals.total)} />
-            <BigStat label="Regular" value={formatHours(grandTotals.regular)} />
-            <BigStat label="Overtime" value={formatHours(grandTotals.overtime)} accent />
+            <BigStat label={t("adminExtra.statTotal")} value={formatHours(grandTotals.total)} />
+            <BigStat label={t("adminExtra.statRegular")} value={formatHours(grandTotals.regular)} />
+            <BigStat label={t("adminExtra.statOvertime")} value={formatHours(grandTotals.overtime)} accent />
           </div>
 
           {/* Missing-timesheet alerts */}
@@ -258,10 +259,10 @@ const AdminPortal = () => {
                 <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <h3 className="font-display tracking-wide uppercase text-sm text-destructive">
-                    Missing timesheets ({missingEmployees.length})
+                    {t("adminExtra.missingTitle", { count: missingEmployees.length })}
                   </h3>
                   <p className="text-xs text-muted-foreground mb-2">
-                    These employees have no entries for {formatDate(viewWeek)} – {formatDate(viewSunday)}.
+                    {t("adminExtra.missingBody", { range: `${formatDate(viewWeek)} – ${formatDate(viewSunday)}` })}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {missingEmployees.map((p) => (
@@ -315,7 +316,7 @@ const AdminPortal = () => {
                       <TableCell>
                         <div className="font-medium group-hover:text-maple transition-colors flex items-center gap-2">
                           {displayLastFirst(p)}
-                          {p.is_test && <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">Test</span>}
+                          {p.is_test && <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">{t("people.test")}</span>}
                         </div>
                         <div className="text-xs text-muted-foreground">{p.email}</div>
                       </TableCell>
