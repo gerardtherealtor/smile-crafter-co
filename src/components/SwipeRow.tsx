@@ -1,4 +1,5 @@
 import { useRef, useState, ReactNode, TouchEvent, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Trash2, Pencil } from "lucide-react";
 import { haptics } from "@/lib/haptics";
 
@@ -15,7 +16,7 @@ export const SwipeRow = ({
   children,
   onDelete,
   onEdit,
-  deleteConfirmMessage = "Delete this entry?",
+  deleteConfirmMessage,
   className = "",
 }: {
   children: ReactNode;
@@ -24,6 +25,8 @@ export const SwipeRow = ({
   deleteConfirmMessage?: string;
   className?: string;
 }) => {
+  const { t } = useTranslation();
+  const confirmMsg = deleteConfirmMessage ?? t("swipe.confirmDelete");
   const startX = useRef<number | null>(null);
   const startY = useRef<number | null>(null);
   const locked = useRef<"h" | "v" | null>(null);
