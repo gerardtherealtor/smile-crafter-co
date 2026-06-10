@@ -63,7 +63,7 @@ export const PeopleManager = ({
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success(next ? "Reactivated" : "Deactivated");
+      toast.success(next ? t("people.reactivated") : t("people.deactivated"));
       await reload();
     }
   };
@@ -74,13 +74,13 @@ export const PeopleManager = ({
     const { error } = await supabase.auth.resetPasswordForEmail(p.email, { redirectTo });
     setBusyId(null);
     if (error) toast.error(error.message);
-    else toast.success(`Reset email sent to ${p.email}`);
+    else toast.success(t("people.resetSent", { email: p.email }));
   };
 
   const performDelete = async () => {
     if (!confirmDelete) return;
     if (typed.trim() !== "DELETE") {
-      toast.error("Type DELETE to confirm");
+      toast.error(t("people.typeDeleteFirst"));
       return;
     }
     setBusyId(confirmDelete.id);
@@ -89,10 +89,10 @@ export const PeopleManager = ({
     });
     setBusyId(null);
     if (error || (data && (data as any).error)) {
-      toast.error(error?.message || (data as any)?.error || "Delete failed");
+      toast.error(error?.message || (data as any)?.error || t("people.deleteFailed"));
       return;
     }
-    toast.success("User deleted");
+    toast.success(t("people.userDeleted"));
     setConfirmDelete(null);
     setTyped("");
     await reload();
@@ -110,26 +110,26 @@ export const PeopleManager = ({
   return (
     <div className="rounded-xl border border-border bg-card shadow-deep overflow-hidden">
       <div className="p-4 border-b border-border">
-        <h2 className="font-display text-lg uppercase tracking-wide">People</h2>
+        <h2 className="font-display text-lg uppercase tracking-wide">{t("people.title")}</h2>
         <p className="text-sm text-muted-foreground">
-          Manage roles, deactivate accounts, send password resets, or permanently remove users.
+          {t("people.subtitle")}
         </p>
       </div>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead className="hidden md:table-cell">Role</TableHead>
-              <TableHead className="hidden sm:table-cell">Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t("people.user")}</TableHead>
+              <TableHead className="hidden md:table-cell">{t("people.role")}</TableHead>
+              <TableHead className="hidden sm:table-cell">{t("people.status")}</TableHead>
+              <TableHead className="text-right">{t("people.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loadingRoles ? (
               <TableRowSkeleton cols={4} rows={4} />
             ) : sorted.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No users yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{t("people.empty")}</TableCell></TableRow>
             ) : sorted.map((p) => {
               const role = roles.get(p.id) || "employee";
               const isSelf = user?.id === p.id;
@@ -141,36 +141,36 @@ export const PeopleManager = ({
                       {p.full_name || p.email}
                       {p.is_test && (
                         <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-                          Test
+                          {t("people.test")}
                         </span>
                       )}
                       {isSelf && (
                         <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">
-                          You
+                          {t("people.you")}
                         </span>
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">{p.email}</div>
                     <div className="md:hidden mt-1 flex items-center gap-1.5 text-xs">
                       {role === "admin" ? (
-                        <><Shield className="h-3 w-3 text-maple" /> Admin</>
+                        <><Shield className="h-3 w-3 text-maple" /> {t("people.admin")}</>
                       ) : (
-                        <><HardHat className="h-3 w-3 text-muted-foreground" /> Employee</>
+                        <><HardHat className="h-3 w-3 text-muted-foreground" /> {t("people.employee")}</>
                       )}
                       <span className="mx-1 text-muted-foreground">·</span>
                       <span className={p.is_active ? "text-green-500" : "text-muted-foreground"}>
-                        {p.is_active ? "Active" : "Inactive"}
+                        {p.is_active ? t("people.active") : t("people.inactive")}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {role === "admin" ? (
                       <span className="inline-flex items-center gap-1.5 text-sm">
-                        <Shield className="h-3.5 w-3.5 text-maple" /> Admin
+                        <Shield className="h-3.5 w-3.5 text-maple" /> {t("people.admin")}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <HardHat className="h-3.5 w-3.5" /> Employee
+                        <HardHat className="h-3.5 w-3.5" /> {t("people.employee")}
                       </span>
                     )}
                   </TableCell>
@@ -180,7 +180,7 @@ export const PeopleManager = ({
                         ? "border-green-500/40 bg-green-500/10 text-green-500"
                         : "border-border bg-muted text-muted-foreground"
                     }`}>
-                      {p.is_active ? "Active" : "Inactive"}
+                      {p.is_active ? t("people.active") : t("people.inactive")}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
@@ -191,10 +191,10 @@ export const PeopleManager = ({
                         haptic="light"
                         disabled={busy}
                         onClick={() => sendResetEmail(p)}
-                        title="Email password reset"
+                        title={t("people.resetTitle")}
                       >
                         <KeyRound className="h-3.5 w-3.5 sm:mr-1.5" />
-                        <span className="hidden sm:inline">Reset</span>
+                        <span className="hidden sm:inline">{t("people.reset")}</span>
                       </Button>
                       <Button
                         size="sm"
@@ -202,12 +202,12 @@ export const PeopleManager = ({
                         haptic="medium"
                         disabled={busy || isSelf}
                         onClick={() => toggleActive(p)}
-                        title={isSelf ? "Can't change your own status" : (p.is_active ? "Deactivate" : "Reactivate")}
+                        title={isSelf ? t("people.cantSelfStatus") : (p.is_active ? t("people.deactivate") : t("people.reactivate"))}
                       >
                         {p.is_active ? (
-                          <><UserX className="h-3.5 w-3.5 sm:mr-1.5" /><span className="hidden sm:inline">Deactivate</span></>
+                          <><UserX className="h-3.5 w-3.5 sm:mr-1.5" /><span className="hidden sm:inline">{t("people.deactivate")}</span></>
                         ) : (
-                          <><UserCheck className="h-3.5 w-3.5 sm:mr-1.5" /><span className="hidden sm:inline">Reactivate</span></>
+                          <><UserCheck className="h-3.5 w-3.5 sm:mr-1.5" /><span className="hidden sm:inline">{t("people.reactivate")}</span></>
                         )}
                       </Button>
                       <Button
@@ -216,10 +216,10 @@ export const PeopleManager = ({
                         haptic="medium"
                         disabled={busy || isSelf}
                         onClick={() => { setConfirmDelete(p); setTyped(""); }}
-                        title={isSelf ? "Use account deletion to remove your own account" : "Permanently delete"}
+                        title={isSelf ? t("people.cantSelfDelete") : t("people.deleteUser")}
                       >
                         <Trash2 className="h-3.5 w-3.5 sm:mr-1.5" />
-                        <span className="hidden sm:inline">Delete</span>
+                        <span className="hidden sm:inline">{t("common.delete")}</span>
                       </Button>
                     </div>
                   </TableCell>
@@ -234,14 +234,14 @@ export const PeopleManager = ({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display uppercase tracking-wider text-destructive">
-              Permanently delete user?
+              {t("people.deleteTitle")}
             </DialogTitle>
             <DialogDescription>
-              This will erase <strong>{confirmDelete?.email}</strong> and all of their time entries, support tickets, and account data. This cannot be undone.
+              {t("people.deleteBody", { email: confirmDelete?.email ?? "" })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="confirm-delete">Type <span className="font-mono font-bold">DELETE</span> to confirm</Label>
+            <Label htmlFor="confirm-delete">{t("people.typeDeleteLabel")}</Label>
             <Input
               id="confirm-delete"
               value={typed}
@@ -251,14 +251,14 @@ export const PeopleManager = ({
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => { setConfirmDelete(null); setTyped(""); }}>Cancel</Button>
+            <Button variant="ghost" onClick={() => { setConfirmDelete(null); setTyped(""); }}>{t("common.cancel")}</Button>
             <Button
               variant="destructive"
               disabled={typed.trim() !== "DELETE" || busyId === confirmDelete?.id}
               onClick={performDelete}
             >
               <Trash2 className="h-4 w-4 mr-1.5" />
-              {busyId === confirmDelete?.id ? "Deleting…" : "Delete user"}
+              {busyId === confirmDelete?.id ? t("people.deleting") : t("people.deleteUser")}
             </Button>
           </DialogFooter>
         </DialogContent>
