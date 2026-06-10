@@ -14,6 +14,9 @@ import Unsubscribe from "./pages/Unsubscribe.tsx";
 
 import Privacy from "./pages/Privacy.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { installToastHaptics } from "@/lib/toast";
+
+installToastHaptics();
 
 const queryClient = new QueryClient();
 
