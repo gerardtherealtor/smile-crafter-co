@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ interface RoleRow { user_id: string; role: "admin" | "employee" | "moderator" }
 export const PeopleManager = ({
   profiles, reload,
 }: { profiles: Profile[]; reload: () => Promise<void> | void }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [roles, setRoles] = useState<Map<string, RoleRow["role"]>>(new Map());
   const [loadingRoles, setLoadingRoles] = useState(true);
