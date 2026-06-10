@@ -217,7 +217,7 @@ const AdminPortal = () => {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
+                    <TableRowSkeleton cols={5} rows={4} />
                   ) : perEmployee.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No employees yet.</TableCell></TableRow>
                   ) : perEmployee.map((p) => (
