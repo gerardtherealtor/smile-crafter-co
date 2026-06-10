@@ -426,20 +426,21 @@ const AdminPortal = () => {
 };
 
 const PdfPreview = ({ file }: { file: Blob | null }) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [status, setStatus] = useState("Loading preview…");
+  const [status, setStatus] = useState(t("adminExtra.previewLoading"));
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     container.innerHTML = "";
     if (!file) {
-      setStatus("Loading preview…");
+      setStatus(t("adminExtra.previewLoading"));
       return;
     }
 
     let cancelled = false;
-    setStatus("Rendering preview…");
+    setStatus(t("adminExtra.previewRendering"));
 
     const renderPdf = async () => {
       try {
@@ -472,7 +473,7 @@ const PdfPreview = ({ file }: { file: Blob | null }) => {
         if (!cancelled) setStatus("");
       } catch (error) {
         console.error("Report preview failed", error);
-        if (!cancelled) setStatus("Preview failed. Please use Download instead.");
+        if (!cancelled) setStatus(t("adminExtra.previewFailed"));
       }
     };
 
