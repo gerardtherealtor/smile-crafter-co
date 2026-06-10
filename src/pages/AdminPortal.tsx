@@ -396,6 +396,10 @@ const AdminPortal = () => {
             </Table>
           </div>
         </TabsContent>
+
+        <TabsContent value="people">
+          <PeopleManager profiles={profiles} reload={load} />
+        </TabsContent>
       </Tabs>
       {selectedEmployee && (
         <EmployeeWeekDialog profile={selectedEmployee} jobs={jobs} onClose={() => setSelectedEmployee(null)} />
