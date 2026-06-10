@@ -18,6 +18,8 @@ import {
 } from "@/lib/time";
 import { Clock, Save, Calendar, FileDown, FileText, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import jsPDF from "jspdf";
+import { haptics } from "@/lib/haptics";
+import { SuccessCheck } from "@/components/SuccessCheck";
 
 interface Job { id: string; name: string }
 interface Entry {
@@ -36,6 +38,7 @@ const EmployeePortal = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const monday = useMemo(() => weekStart(), []);
   const sunday = useMemo(() => weekEnd(monday), [monday]);
@@ -133,6 +136,7 @@ const EmployeePortal = () => {
       }
     }
     setSaving(true);
+    haptics.medium();
     // If the employee is using Spanish, translate notes to English for admin reports.
     const lang = (i18n.language || "en").toLowerCase();
     const translateNotes = async (txt: string): Promise<string | null> => {
@@ -181,6 +185,7 @@ const EmployeePortal = () => {
       toast.error(error.message);
     } else {
       toast.success(t("employee.saved"));
+      setShowSuccess(true);
       // Notify admins once with summary
       const jobNames = valid
         .map((s) => jobs.find((j) => j.id === s.jobId)?.name ?? "—")
@@ -635,6 +640,11 @@ const EmployeePortal = () => {
           </div>
         </div>
       </div>
+      <SuccessCheck
+        show={showSuccess}
+        onDone={() => setShowSuccess(false)}
+        label={t("employee.saved")}
+      />
     </PortalLayout>
   );
 };

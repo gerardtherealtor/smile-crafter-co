@@ -146,4 +146,38 @@
   .animate-dust { animation: dust-puff 2.5s ease-in-out infinite; }
   .animate-wheel { animation: wheel-spin 1.4s linear infinite; }
   .animate-arm { animation: excavator-arm 4s ease-in-out infinite; }
+
+  /* Snappy micro-interactions for tappable surfaces */
+  .tappable {
+    @apply transition-all duration-150 ease-out cursor-pointer select-none active:scale-[0.97] active:brightness-110;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Fade-in used by overlays */
+  @keyframes fade-in-kf {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .animate-fade-in { animation: fade-in-kf 160ms ease-out both; }
+
+  /* Success checkmark animation */
+  @keyframes success-pop-kf {
+    0%   { transform: scale(0.6); opacity: 0; }
+    60%  { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .success-pop { animation: success-pop-kf 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+  .success-check__circle {
+    stroke-dasharray: 160;
+    stroke-dashoffset: 160;
+    animation: success-circle-kf 420ms ease-out forwards;
+  }
+  .success-check__path {
+    stroke-dasharray: 60;
+    stroke-dashoffset: 60;
+    animation: success-path-kf 320ms 320ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  }
+  @keyframes success-circle-kf { to { stroke-dashoffset: 0; } }
+  @keyframes success-path-kf   { to { stroke-dashoffset: 0; } }
 }
