@@ -185,6 +185,7 @@ const EmployeePortal = () => {
       toast.error(error.message);
     } else {
       toast.success(t("employee.saved"));
+      setShowSuccess(true);
       // Notify admins once with summary
       const jobNames = valid
         .map((s) => jobs.find((j) => j.id === s.jobId)?.name ?? "—")
