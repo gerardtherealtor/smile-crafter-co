@@ -15,6 +15,7 @@ import {
 import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Receipt, Tag, Trash2, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InvoicingManager } from "@/components/InvoicingManager";
+import { TableRowSkeleton, StackedSkeleton } from "@/components/Skeletons";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -216,7 +217,7 @@ const AdminPortal = () => {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
+                    <TableRowSkeleton cols={5} rows={4} />
                   ) : perEmployee.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No employees yet.</TableCell></TableRow>
                   ) : perEmployee.map((p) => (
@@ -563,7 +564,7 @@ const EmployeeWeekDialog = ({
 
         <div className="mt-4 space-y-4">
           {loading ? (
-            <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
+            <StackedSkeleton rows={3} />
           ) : byDate.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">{t("admin.roster.nothingLogged")}</p>
           ) : byDate.map(([date, dayEntries]) => {
@@ -847,7 +848,7 @@ const CategoriesManager = () => {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
+              <TableRowSkeleton cols={4} rows={3} />
             ) : cats.length === 0 ? (
               <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No categories yet.</TableCell></TableRow>
             ) : cats.map((c) => (
