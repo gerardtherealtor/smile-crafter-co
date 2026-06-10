@@ -640,6 +640,11 @@ const EmployeePortal = () => {
           </div>
         </div>
       </div>
+      <SuccessCheck
+        show={showSuccess}
+        onDone={() => setShowSuccess(false)}
+        label={t("employee.saved")}
+      />
     </PortalLayout>
   );
 };
