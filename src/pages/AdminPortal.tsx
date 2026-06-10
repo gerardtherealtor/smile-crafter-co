@@ -165,19 +165,6 @@ const AdminPortal = () => {
     return { total, regular, overtime };
   }, [perEmployee]);
 
-  const sendReportNow = async () => {
-    setSending(true);
-    const { data, error } = await supabase.functions.invoke("send-weekly-report", {
-      body: { week_start: monday },
-    });
-    setSending(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success(t("admin.weeklyReportSent"));
-      load();
-    }
-  };
 
   const downloadReport = async (path: string) => {
     const { data, error } = await supabase.storage
