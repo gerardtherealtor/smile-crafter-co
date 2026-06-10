@@ -7,6 +7,7 @@ import { LogOut, HardHat, Shield } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { SupportTicketButton } from "@/components/SupportTicketButton";
+import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 
 export const PortalLayout = ({
   children,
@@ -68,6 +69,7 @@ export const PortalLayout = ({
               <LogOut className="h-4 w-4 mr-1.5" />
               {t("portal.signOut")}
             </Button>
+            <DeleteAccountButton />
           </div>
         </div>
       </header>
