@@ -136,9 +136,10 @@ const AdminPortal = () => {
     });
     setEmailingCsv(false);
     if (error || (data as any)?.error) {
-      toast.error(error?.message || (data as any)?.error || "Failed to send CSV");
+      toast.error(error?.message || (data as any)?.error || t("adminExtra.csvFailed"));
     } else {
-      toast.success(`CSV emailed${(data as any)?.recipient ? ` to ${(data as any).recipient}` : ""}`);
+      const to = (data as any)?.recipient;
+      toast.success(to ? t("adminExtra.csvSentTo", { to }) : t("adminExtra.csvSent"));
     }
   };
 
@@ -188,7 +189,7 @@ const AdminPortal = () => {
   const [previewReport, setPreviewReport] = useState<ReportRow | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const openPreview = async (r: ReportRow) => {
-    if (!r.pdf_path) { toast.error("No PDF available for this week yet. Click 'Send Report Now' to generate it."); return; }
+    if (!r.pdf_path) { toast.error(t("adminExtra.noPdfYet")); return; }
     setPreviewReport(r);
     setPreviewBlob(null);
     const { data, error } = await supabase.storage
@@ -214,9 +215,9 @@ const AdminPortal = () => {
           <TabsTrigger value="invoicing" className="font-display tracking-wider"><Receipt className="h-4 w-4 mr-1.5" />{t("admin.tabs.invoicing")}</TabsTrigger>
           <TabsTrigger value="roster" className="font-display tracking-wider"><ClipboardList className="h-4 w-4 mr-1.5" />{t("admin.tabs.roster")}</TabsTrigger>
           <TabsTrigger value="jobs" className="font-display tracking-wider"><Briefcase className="h-4 w-4 mr-1.5" />{t("admin.tabs.jobs")}</TabsTrigger>
-          <TabsTrigger value="categories" className="font-display tracking-wider"><Tag className="h-4 w-4 mr-1.5" />Categories</TabsTrigger>
+          <TabsTrigger value="categories" className="font-display tracking-wider"><Tag className="h-4 w-4 mr-1.5" />{t("categories.tabLabel")}</TabsTrigger>
           <TabsTrigger value="reports" className="font-display tracking-wider"><FileDown className="h-4 w-4 mr-1.5" />{t("admin.tabs.reports")}</TabsTrigger>
-          <TabsTrigger value="people" className="font-display tracking-wider"><Users2 className="h-4 w-4 mr-1.5" />People</TabsTrigger>
+          <TabsTrigger value="people" className="font-display tracking-wider"><Users2 className="h-4 w-4 mr-1.5" />{t("people.title")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="week" className="space-y-5">
@@ -227,7 +228,7 @@ const AdminPortal = () => {
             </Button>
             <div className="text-center">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                {isCurrentWeek ? "Current week" : "Viewing week"}
+                {isCurrentWeek ? t("adminExtra.currentWeek") : t("adminExtra.viewingWeek")}
               </div>
               <div className="font-display tracking-wide text-sm sm:text-base">
                 {formatDate(viewWeek)} – {formatDate(viewSunday)}
@@ -236,7 +237,7 @@ const AdminPortal = () => {
             <div className="flex items-center gap-1">
               {!isCurrentWeek && (
                 <Button type="button" variant="outline" size="sm" onClick={() => setViewWeek(monday)} className="hidden sm:inline-flex">
-                  Today
+                  {t("adminExtra.today")}
                 </Button>
               )}
               <Button type="button" variant="ghost" size="sm" onClick={() => shiftWeek(1)} disabled={isCurrentWeek} className="h-9 w-9 p-0">
@@ -246,9 +247,9 @@ const AdminPortal = () => {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <BigStat label="Total" value={formatHours(grandTotals.total)} />
-            <BigStat label="Regular" value={formatHours(grandTotals.regular)} />
-            <BigStat label="Overtime" value={formatHours(grandTotals.overtime)} accent />
+            <BigStat label={t("adminExtra.statTotal")} value={formatHours(grandTotals.total)} />
+            <BigStat label={t("adminExtra.statRegular")} value={formatHours(grandTotals.regular)} />
+            <BigStat label={t("adminExtra.statOvertime")} value={formatHours(grandTotals.overtime)} accent />
           </div>
 
           {/* Missing-timesheet alerts */}
@@ -258,10 +259,10 @@ const AdminPortal = () => {
                 <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <h3 className="font-display tracking-wide uppercase text-sm text-destructive">
-                    Missing timesheets ({missingEmployees.length})
+                    {t("adminExtra.missingTitle", { count: missingEmployees.length })}
                   </h3>
                   <p className="text-xs text-muted-foreground mb-2">
-                    These employees have no entries for {formatDate(viewWeek)} – {formatDate(viewSunday)}.
+                    {t("adminExtra.missingBody", { range: `${formatDate(viewWeek)} – ${formatDate(viewSunday)}` })}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {missingEmployees.map((p) => (
@@ -315,7 +316,7 @@ const AdminPortal = () => {
                       <TableCell>
                         <div className="font-medium group-hover:text-maple transition-colors flex items-center gap-2">
                           {displayLastFirst(p)}
-                          {p.is_test && <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">Test</span>}
+                          {p.is_test && <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">{t("people.test")}</span>}
                         </div>
                         <div className="text-xs text-muted-foreground">{p.email}</div>
                       </TableCell>
@@ -373,7 +374,7 @@ const AdminPortal = () => {
                     key={r.id}
                     onClick={() => r.pdf_path && openPreview(r)}
                     className={r.pdf_path ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
-                    title={r.pdf_path ? "Click to preview report" : ""}
+                    title={r.pdf_path ? t("adminExtra.previewClick") : ""}
                   >
                     <TableCell>{formatDate(r.week_start)} – {formatDate(r.week_end)}</TableCell>
                     <TableCell className="text-right font-display">{formatHours(Number(r.total_regular_hours))}</TableCell>
@@ -382,7 +383,7 @@ const AdminPortal = () => {
                       {r.pdf_path ? (
                         <div className="flex justify-end gap-2">
                           <Button size="sm" variant="outline" onClick={() => openPreview(r)}>
-                            Preview
+                            {t("adminExtra.preview")}
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => downloadReport(r.pdf_path!)}>
                             <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
@@ -410,7 +411,7 @@ const AdminPortal = () => {
             <DialogTitle className="font-display tracking-wide">
               {previewReport && `${formatDate(previewReport.week_start)} – ${formatDate(previewReport.week_end)}`}
             </DialogTitle>
-            <DialogDescription className="sr-only">Weekly report PDF preview</DialogDescription>
+            <DialogDescription className="sr-only">{t("adminExtra.previewTitle")}</DialogDescription>
             {previewReport?.pdf_path && (
               <Button size="sm" variant="outline" className="mr-8" onClick={() => downloadReport(previewReport.pdf_path!)}>
                 <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
@@ -425,20 +426,21 @@ const AdminPortal = () => {
 };
 
 const PdfPreview = ({ file }: { file: Blob | null }) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [status, setStatus] = useState("Loading preview…");
+  const [status, setStatus] = useState(t("adminExtra.previewLoading"));
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     container.innerHTML = "";
     if (!file) {
-      setStatus("Loading preview…");
+      setStatus(t("adminExtra.previewLoading"));
       return;
     }
 
     let cancelled = false;
-    setStatus("Rendering preview…");
+    setStatus(t("adminExtra.previewRendering"));
 
     const renderPdf = async () => {
       try {
@@ -471,7 +473,7 @@ const PdfPreview = ({ file }: { file: Blob | null }) => {
         if (!cancelled) setStatus("");
       } catch (error) {
         console.error("Report preview failed", error);
-        if (!cancelled) setStatus("Preview failed. Please use Download instead.");
+        if (!cancelled) setStatus(t("adminExtra.previewFailed"));
       }
     };
 
@@ -675,13 +677,13 @@ const EmployeeWeekDialog = ({
                           <span className="font-medium">{jobName(e.job_id)}</span>
                           <span className="text-muted-foreground">
                             {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {formatHours(Number(e.hours))} {t("common.hours")}
-                            {e.break_minutes ? ` · ${e.break_minutes}m break` : ""}
+                            {e.break_minutes ? ` · ${t("employeeExtra.breakSuffix", { n: e.break_minutes })}` : ""}
                           </span>
                         </div>
                         {(cat || e.work_quantity != null) && (
                           <div className="text-xs text-foreground/80 mt-1">
                             {cat}
-                            {e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
+                            {e.work_quantity != null ? ` · ${t("employeeExtra.qtySuffix", { n: e.work_quantity })}` : ""}
                           </div>
                         )}
                         {(e.notes_en || e.notes) && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes_en || e.notes}</div>}
@@ -780,7 +782,7 @@ const RosterManager = ({
         <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-3">
           <Input placeholder={t("admin.roster.placeholder")} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
           <Button type="submit" disabled={busy} className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
-            <Plus className="h-4 w-4 mr-1.5" /> Add
+            <Plus className="h-4 w-4 mr-1.5" /> {t("common.add")}
           </Button>
         </form>
       </div>
@@ -815,7 +817,7 @@ const RosterManager = ({
                     >
                       {r.full_name}
                     </button>
-                    {linked?.is_test && <span className="ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border align-middle">Test</span>}
+                    {linked?.is_test && <span className="ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border align-middle">{t("people.test")}</span>}
                     {!linked && <div className="text-xs text-muted-foreground">{t("admin.roster.notSignedUp")}</div>}
                   </TableCell>
                   <TableCell className="text-right">
@@ -845,6 +847,7 @@ const RosterManager = ({
 interface WorkCategory { id: string; name: string; sort_order: number; is_active: boolean }
 
 const CategoriesManager = () => {
+  const { t } = useTranslation();
   const [cats, setCats] = useState<WorkCategory[]>([]);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -874,7 +877,7 @@ const CategoriesManager = () => {
       .insert({ name: trimmed, sort_order: maxOrder + 10 });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    setName(""); toast.success("Category added"); load();
+    setName(""); toast.success(t("categories.added")); load();
   };
 
   const toggle = async (c: WorkCategory) => {
@@ -886,30 +889,30 @@ const CategoriesManager = () => {
   };
 
   const rename = async (c: WorkCategory) => {
-    const next = window.prompt("Rename category", c.name);
+    const next = window.prompt(t("categories.renamePrompt"), c.name);
     if (!next || next.trim() === c.name) return;
     const { error } = await supabase
       .from("work_categories")
       .update({ name: next.trim() })
       .eq("id", c.id);
-    if (error) toast.error(error.message); else { toast.success("Renamed"); load(); }
+    if (error) toast.error(error.message); else { toast.success(t("categories.renamed")); load(); }
   };
 
   const remove = async (c: WorkCategory) => {
-    if (!confirm(`Remove "${c.name}"? Past time entries keep this category as text.`)) return;
+    if (!confirm(t("categories.removeConfirm", { name: c.name }))) return;
     const { error } = await supabase.from("work_categories").delete().eq("id", c.id);
-    if (error) toast.error(error.message); else { toast.success("Removed"); load(); }
+    if (error) toast.error(error.message); else { toast.success(t("categories.removed")); load(); }
   };
 
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-card p-4 shadow-deep">
         <p className="text-sm text-muted-foreground mb-3">
-          Categories show up in the "What did you work on" dropdown on the My Time screen. Add new ones as work types come up.
+          {t("categories.helper")}
         </p>
         <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-3">
           <Input
-            placeholder="New category name"
+            placeholder={t("categories.newPlaceholder")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={120}
@@ -920,7 +923,7 @@ const CategoriesManager = () => {
             disabled={busy}
             className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider"
           >
-            <Plus className="h-4 w-4 mr-1.5" /> Add
+            <Plus className="h-4 w-4 mr-1.5" /> {t("common.add")}
           </Button>
         </form>
       </div>
@@ -929,27 +932,27 @@ const CategoriesManager = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Status</TableHead>
-              <TableHead className="text-right">Rename</TableHead>
-              <TableHead className="text-right">Remove</TableHead>
+              <TableHead>{t("categories.category")}</TableHead>
+              <TableHead className="text-right">{t("categories.status")}</TableHead>
+              <TableHead className="text-right">{t("categories.rename")}</TableHead>
+              <TableHead className="text-right">{t("categories.remove")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRowSkeleton cols={4} rows={3} />
             ) : cats.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No categories yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{t("categories.empty")}</TableCell></TableRow>
             ) : cats.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell className="text-right">
                   <Button size="sm" variant={c.is_active ? "outline" : "secondary"} onClick={() => toggle(c)}>
-                    {c.is_active ? "Active" : "Hidden"}
+                    {c.is_active ? t("categories.active") : t("categories.hidden")}
                   </Button>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button size="sm" variant="ghost" onClick={() => rename(c)}>Edit</Button>
+                  <Button size="sm" variant="ghost" onClick={() => rename(c)}>{t("common.edit")}</Button>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button size="sm" variant="ghost" onClick={() => remove(c)}>

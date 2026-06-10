@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 
 export const DeleteAccountButton = () => {
+  const { t } = useTranslation();
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -37,20 +39,17 @@ export const DeleteAccountButton = () => {
         throw new Error(
           (error?.message as string) ||
             (data as any)?.error ||
-            "Failed to delete account",
+            t("account.deleteFailed"),
         );
       }
       try {
         await signOut();
       } catch {}
-      toast.success("Your account has been deleted.");
+      toast.success(t("account.deleteSuccess"));
       setOpen(false);
       navigate("/auth", { replace: true });
     } catch (e) {
-      toast.error(
-        (e as Error).message ||
-          "Could not delete your account. Please try again.",
-      );
+      toast.error((e as Error).message || t("account.deleteFailed"));
       setLoading(false);
     }
   };
@@ -71,30 +70,24 @@ export const DeleteAccountButton = () => {
           className="border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground font-display tracking-wider"
         >
           <Trash2 className="h-4 w-4 mr-1.5" />
-          Delete Account
+          {t("account.deleteButton")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md w-[calc(100vw-2rem)]">
         <DialogHeader>
-          <DialogTitle>Delete your account?</DialogTitle>
+          <DialogTitle>{t("account.deleteTitle")}</DialogTitle>
           <DialogDescription className="space-y-2 pt-2">
-            <span className="block">
-              This will <strong>permanently delete</strong> your account and all
-              of your data, including time entries, profile, support tickets,
-              and role assignments. This cannot be undone.
-            </span>
-            <span className="block">
-              Type <strong>DELETE</strong> below to confirm.
-            </span>
+            <span className="block">{t("account.deleteBody")}</span>
+            <span className="block">{t("account.typeDeleteInstr")}</span>
           </DialogDescription>
         </DialogHeader>
         <Input
           autoFocus
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
-          placeholder="DELETE"
+          placeholder={t("account.typeDeletePlaceholder")}
           disabled={loading}
-          aria-label="Type DELETE to confirm"
+          aria-label={t("account.typeDeleteInstr")}
         />
         <DialogFooter className="gap-2">
           <Button
@@ -102,7 +95,7 @@ export const DeleteAccountButton = () => {
             onClick={() => setOpen(false)}
             disabled={loading}
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             variant="destructive"
@@ -112,12 +105,12 @@ export const DeleteAccountButton = () => {
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                Deleting…
+                {t("account.deleting")}
               </>
             ) : (
               <>
                 <Trash2 className="h-4 w-4 mr-1.5" />
-                Delete forever
+                {t("account.deleteForever")}
               </>
             )}
           </Button>

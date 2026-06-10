@@ -9,9 +9,16 @@ export const todayISO = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
+import i18n from "@/i18n";
+
+const localeFor = () => {
+  const lng = (i18n?.language || "en").toLowerCase();
+  return lng.startsWith("es") ? "es-MX" : "en-US";
+};
+
 export const formatDate = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+  return new Date(y, m - 1, d).toLocaleDateString(localeFor(), {
     weekday: "short",
     month: "short",
     day: "numeric",

@@ -120,7 +120,7 @@ const EmployeePortal = () => {
       setEntries(snapshot);
       toast.error(error.message);
     } else {
-      toast.success("Entry removed");
+      toast.success(t("swipe.entryRemoved"));
     }
   };
 
@@ -383,11 +383,8 @@ const EmployeePortal = () => {
         {/* Entry form */}
         {!isCurrentWeek ? (
           <div className="lg:col-span-3 rounded-xl border border-maple/40 bg-maple/10 p-6 shadow-deep flex items-center justify-center text-center">
-            <div>
-              <div className="font-display text-lg uppercase tracking-wide text-maple mb-1">
-                Viewing {formatDate(viewWeek)} – {formatDate(viewSunday)}
-              </div>
-              <div className="text-sm text-muted-foreground">Past weeks are read-only</div>
+            <div className="font-display text-base uppercase tracking-wide text-maple">
+              {t("employeeExtra.viewingBanner", { range: `${formatDate(viewWeek)} – ${formatDate(viewSunday)}` })}
             </div>
           </div>
         ) : (
@@ -530,7 +527,7 @@ const EmployeePortal = () => {
           {dateEntries.length > 0 && (
             <div className="mt-5 rounded-lg border border-border bg-background/40 p-4">
               <div className="font-display text-sm uppercase tracking-widest text-muted-foreground mb-2">
-                Already logged for {formatDate(date)}
+                {t("employeeExtra.alreadyLogged", { date: formatDate(date) })}
               </div>
               <ul className="divide-y divide-border">
                 {dateEntries.map((e) => {
@@ -544,7 +541,7 @@ const EmployeePortal = () => {
                         </div>
                         {(cat || e.work_quantity != null) && (
                           <div className="text-xs text-foreground/80">
-                            {cat}{e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
+                            {cat}{e.work_quantity != null ? ` · ${t("employeeExtra.qtySuffix", { n: e.work_quantity })}` : ""}
                           </div>
                         )}
                       </div>
@@ -638,12 +635,12 @@ const EmployeePortal = () => {
                           <div className="font-medium text-sm">{formatDate(e.work_date)}</div>
                           <div className="text-xs text-muted-foreground">
                             {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {job?.name ?? "—"}
-                            {e.break_minutes ? ` · ${e.break_minutes}m break` : ""}
+                            {e.break_minutes ? ` · ${t("employeeExtra.breakSuffix", { n: e.break_minutes })}` : ""}
                           </div>
                           {(e.work_category || e.work_quantity != null) && (
                             <div className="text-xs text-foreground/80 mt-1">
                               {e.work_category === "Other" ? (e.work_category_other || "Other") : e.work_category}
-                              {e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
+                              {e.work_quantity != null ? ` · ${t("employeeExtra.qtySuffix", { n: e.work_quantity })}` : ""}
                             </div>
                           )}
                           {e.notes && (
@@ -670,7 +667,7 @@ const EmployeePortal = () => {
                           <SwipeRow
                             onDelete={() => deleteEntry(e.id)}
                             onEdit={() => editEntry(e)}
-                            deleteConfirmMessage={t("employee.confirmDelete") || "Delete this entry?"}
+                            deleteConfirmMessage={t("swipe.confirmDelete")}
                           >
                             {rowContent}
                           </SwipeRow>
