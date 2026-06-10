@@ -108,13 +108,39 @@ const EmployeePortal = () => {
 
   const deleteEntry = async (entryId: string) => {
     if (!user) return;
+    // Optimistic: snapshot, remove immediately, rollback on failure.
+    const snapshot = entries;
+    setEntries((prev) => prev.filter((e) => e.id !== entryId));
     const { error } = await supabase
       .from("time_entries")
       .delete()
       .eq("id", entryId)
       .eq("user_id", user.id);
-    if (error) { toast.error(error.message); }
-    else { toast.success("Entry removed"); await loadData(); }
+    if (error) {
+      setEntries(snapshot);
+      toast.error(error.message);
+    } else {
+      toast.success("Entry removed");
+    }
+  };
+
+  /** Prefill the form with an existing entry so the user can edit & re-save. */
+  const editEntry = (e: Entry) => {
+    setDate(e.work_date);
+    setShifts([{
+      clockIn: e.clock_in?.slice(0, 5) || "",
+      clockOut: e.clock_out?.slice(0, 5) || "",
+      jobId: e.job_id || "",
+      notes: e.notes || "",
+      breakMinutes: e.break_minutes ? String(e.break_minutes) : "",
+      category: e.work_category === "Other" ? "__other__" : (e.work_category || ""),
+      categoryOther: e.work_category_other || "",
+      quantity: e.work_quantity != null ? String(e.work_quantity) : "",
+    }]);
+    // Scroll the form into view
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   };
 
   const dateEntries = entries.filter((e) => e.work_date === date);
