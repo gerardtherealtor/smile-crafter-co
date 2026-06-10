@@ -220,19 +220,74 @@ const AdminPortal = () => {
         </TabsList>
 
         <TabsContent value="week" className="space-y-5">
+          {/* Week selector */}
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card/60 px-3 py-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => shiftWeek(-1)} className="h-9 w-9 p-0">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-center">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                {isCurrentWeek ? "Current week" : "Viewing week"}
+              </div>
+              <div className="font-display tracking-wide text-sm sm:text-base">
+                {formatDate(viewWeek)} – {formatDate(viewSunday)}
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {!isCurrentWeek && (
+                <Button type="button" variant="outline" size="sm" onClick={() => setViewWeek(monday)} className="hidden sm:inline-flex">
+                  Today
+                </Button>
+              )}
+              <Button type="button" variant="ghost" size="sm" onClick={() => shiftWeek(1)} disabled={isCurrentWeek} className="h-9 w-9 p-0">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 gap-3">
             <BigStat label="Total" value={formatHours(grandTotals.total)} />
             <BigStat label="Regular" value={formatHours(grandTotals.regular)} />
             <BigStat label="Overtime" value={formatHours(grandTotals.overtime)} accent />
           </div>
 
+          {/* Missing-timesheet alerts */}
+          {!loading && missingEmployees.length > 0 && (
+            <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-display tracking-wide uppercase text-sm text-destructive">
+                    Missing timesheets ({missingEmployees.length})
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    These employees have no entries for {formatDate(viewWeek)} – {formatDate(viewSunday)}.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {missingEmployees.map((p) => (
+                      <span key={p.id} className="inline-flex items-center text-xs px-2 py-1 rounded-md border border-destructive/30 bg-card">
+                        {displayLastFirst(p)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl border border-border bg-card shadow-deep overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 border-b border-border">
               <h2 className="font-display text-lg uppercase tracking-wide">Crew Hours</h2>
-              <Button onClick={sendReportNow} disabled={sending} className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
-                <Mail className="h-4 w-4 mr-2" />
-                {sending ? "Sending…" : "Send Report Now"}
-              </Button>
+              <div className="flex gap-2 flex-wrap">
+                <Button onClick={emailMyCsv} disabled={emailingCsv} variant="outline" className="font-display tracking-wider">
+                  <Mail className="h-4 w-4 mr-2" />
+                  {emailingCsv ? "Sending…" : "Email me CSV"}
+                </Button>
+                <Button onClick={sendReportNow} disabled={sending} className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
+                  <Mail className="h-4 w-4 mr-2" />
+                  {sending ? "Sending…" : "Send Report Now"}
+                </Button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <Table>
