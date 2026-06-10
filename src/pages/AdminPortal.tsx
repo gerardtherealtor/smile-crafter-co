@@ -15,6 +15,7 @@ import {
 import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Receipt, Tag, Trash2, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InvoicingManager } from "@/components/InvoicingManager";
+import { TableRowSkeleton, StackedSkeleton } from "@/components/Skeletons";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
