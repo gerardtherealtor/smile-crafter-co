@@ -1,0 +1,122 @@
+// Admin-only: permanently delete another user. Mirrors delete-my-account but
+// the invoker must hold the 'admin' role and explicitly pass target_user_id.
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsErr } =
+      await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const callerId = claimsData.claims.sub as string;
+
+    let body: { target_user_id?: string } = {};
+    try { body = await req.json(); } catch { /* ignore */ }
+    const target = body.target_user_id?.trim();
+    if (!target) {
+      return new Response(JSON.stringify({ error: "Missing target_user_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (target === callerId) {
+      return new Response(JSON.stringify({
+        error: "Use the regular account deletion to remove your own account.",
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    // Verify caller is an admin via SECURITY DEFINER has_role().
+    const { data: isAdmin, error: roleErr } = await admin.rpc("has_role", {
+      _user_id: callerId,
+      _role: "admin",
+    });
+    if (roleErr || !isAdmin) {
+      return new Response(JSON.stringify({ error: "Admin role required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const cleanup = async (label: string, p: Promise<any>) => {
+      try {
+        const { error } = await p;
+        if (error) console.error(`[admin-delete-user] ${label}:`, error.message);
+      } catch (e) {
+        console.error(`[admin-delete-user] ${label} threw:`, e);
+      }
+    };
+
+    await cleanup("time_entries",
+      admin.from("time_entries").delete().eq("user_id", target));
+    await cleanup("support_tickets",
+      admin.from("support_tickets").delete().eq("user_id", target));
+    await cleanup("user_roles",
+      admin.from("user_roles").delete().eq("user_id", target));
+    await cleanup("roster_unlink",
+      admin.from("roster").update({ linked_profile_id: null })
+        .eq("linked_profile_id", target));
+    await cleanup("profiles",
+      admin.from("profiles").delete().eq("id", target));
+
+    const { error: delErr } = await admin.auth.admin.deleteUser(target);
+    if (delErr) {
+      console.error("[admin-delete-user] auth delete failed:", delErr.message);
+      return new Response(JSON.stringify({ error: delErr.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("[admin-delete-user] unexpected:", e);
+    return new Response(
+      JSON.stringify({ error: (e as Error).message ?? "Unknown error" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
+});

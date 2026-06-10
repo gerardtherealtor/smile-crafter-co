@@ -15,7 +15,9 @@ import {
 import { Briefcase, ChevronLeft, ChevronRight, ClipboardList, FileDown, Mail, Plus, Receipt, Tag, Trash2, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InvoicingManager } from "@/components/InvoicingManager";
+import { PeopleManager } from "@/components/PeopleManager";
 import { TableRowSkeleton, StackedSkeleton } from "@/components/Skeletons";
+import { Users2, AlertTriangle } from "lucide-react";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -65,7 +67,18 @@ const AdminPortal = () => {
 
 
   const monday = useMemo(() => weekStart(), []);
-  const sunday = useMemo(() => weekEnd(monday), [monday]);
+  const [viewWeek, setViewWeek] = useState<string>(monday);
+  const viewSunday = useMemo(() => weekEnd(viewWeek), [viewWeek]);
+  const isCurrentWeek = viewWeek === monday;
+  const [emailingCsv, setEmailingCsv] = useState(false);
+
+  const shiftWeek = (delta: number) => {
+    const [y, m, d] = viewWeek.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + delta * 7);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setViewWeek(`${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -74,7 +87,7 @@ const AdminPortal = () => {
       supabase.from("jobs").select("id,name,address,is_active").order("name"),
       supabase.from("time_entries")
         .select("user_id,hours,work_date")
-        .gte("work_date", monday).lte("work_date", sunday),
+        .gte("work_date", viewWeek).lte("work_date", viewSunday),
       supabase.from("weekly_reports").select("id,week_start,week_end,pdf_path,total_regular_hours,total_overtime_hours,generated_at")
         .order("week_start", { ascending: false }).limit(20),
       supabase.from("roster").select("id,full_name,is_active,linked_profile_id").order("full_name"),
@@ -98,7 +111,36 @@ const AdminPortal = () => {
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [viewWeek]);
+
+  // Employees missing any entry for the selected week (active, non-test only).
+  const missingEmployees = useMemo(() => {
+    const logged = new Set(entries.map((e) => e.user_id));
+    return profiles.filter((p) => p.is_active && !p.is_test && !logged.has(p.id));
+  }, [entries, profiles]);
+
+  const sendReportNow = async () => {
+    setSending(true);
+    const { data, error } = await supabase.functions.invoke("send-weekly-report", {
+      body: { week_start: viewWeek },
+    });
+    setSending(false);
+    if (error) toast.error(error.message);
+    else { toast.success(t("admin.weeklyReportSent")); load(); }
+  };
+
+  const emailMyCsv = async () => {
+    setEmailingCsv(true);
+    const { data, error } = await supabase.functions.invoke("email-weekly-csv", {
+      body: { week_start: viewWeek, week_end: viewSunday },
+    });
+    setEmailingCsv(false);
+    if (error || (data as any)?.error) {
+      toast.error(error?.message || (data as any)?.error || "Failed to send CSV");
+    } else {
+      toast.success(`CSV emailed${(data as any)?.recipient ? ` to ${(data as any).recipient}` : ""}`);
+    }
+  };
 
   // Aggregate per employee for current week
   const perEmployee = useMemo(() => {
@@ -123,19 +165,6 @@ const AdminPortal = () => {
     return { total, regular, overtime };
   }, [perEmployee]);
 
-  const sendReportNow = async () => {
-    setSending(true);
-    const { data, error } = await supabase.functions.invoke("send-weekly-report", {
-      body: { week_start: monday },
-    });
-    setSending(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success(t("admin.weeklyReportSent"));
-      load();
-    }
-  };
 
   const downloadReport = async (path: string) => {
     const { data, error } = await supabase.storage
@@ -177,7 +206,7 @@ const AdminPortal = () => {
   return (
     <PortalLayout
       title={t("admin.title")}
-      subtitle={t("employee.subtitle", { range: `${formatDate(monday)} – ${formatDate(sunday)}` })}
+      subtitle={t("employee.subtitle", { range: `${formatDate(viewWeek)} – ${formatDate(viewSunday)}` })}
     >
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="mb-6 flex-wrap h-auto">
@@ -187,22 +216,78 @@ const AdminPortal = () => {
           <TabsTrigger value="jobs" className="font-display tracking-wider"><Briefcase className="h-4 w-4 mr-1.5" />{t("admin.tabs.jobs")}</TabsTrigger>
           <TabsTrigger value="categories" className="font-display tracking-wider"><Tag className="h-4 w-4 mr-1.5" />Categories</TabsTrigger>
           <TabsTrigger value="reports" className="font-display tracking-wider"><FileDown className="h-4 w-4 mr-1.5" />{t("admin.tabs.reports")}</TabsTrigger>
+          <TabsTrigger value="people" className="font-display tracking-wider"><Users2 className="h-4 w-4 mr-1.5" />People</TabsTrigger>
         </TabsList>
 
         <TabsContent value="week" className="space-y-5">
+          {/* Week selector */}
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card/60 px-3 py-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => shiftWeek(-1)} className="h-9 w-9 p-0">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-center">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                {isCurrentWeek ? "Current week" : "Viewing week"}
+              </div>
+              <div className="font-display tracking-wide text-sm sm:text-base">
+                {formatDate(viewWeek)} – {formatDate(viewSunday)}
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {!isCurrentWeek && (
+                <Button type="button" variant="outline" size="sm" onClick={() => setViewWeek(monday)} className="hidden sm:inline-flex">
+                  Today
+                </Button>
+              )}
+              <Button type="button" variant="ghost" size="sm" onClick={() => shiftWeek(1)} disabled={isCurrentWeek} className="h-9 w-9 p-0">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 gap-3">
             <BigStat label="Total" value={formatHours(grandTotals.total)} />
             <BigStat label="Regular" value={formatHours(grandTotals.regular)} />
             <BigStat label="Overtime" value={formatHours(grandTotals.overtime)} accent />
           </div>
 
+          {/* Missing-timesheet alerts */}
+          {!loading && missingEmployees.length > 0 && (
+            <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-display tracking-wide uppercase text-sm text-destructive">
+                    Missing timesheets ({missingEmployees.length})
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    These employees have no entries for {formatDate(viewWeek)} – {formatDate(viewSunday)}.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {missingEmployees.map((p) => (
+                      <span key={p.id} className="inline-flex items-center text-xs px-2 py-1 rounded-md border border-destructive/30 bg-card">
+                        {displayLastFirst(p)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl border border-border bg-card shadow-deep overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 border-b border-border">
               <h2 className="font-display text-lg uppercase tracking-wide">Crew Hours</h2>
-              <Button onClick={sendReportNow} disabled={sending} className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
-                <Mail className="h-4 w-4 mr-2" />
-                {sending ? "Sending…" : "Send Report Now"}
-              </Button>
+              <div className="flex gap-2 flex-wrap">
+                <Button onClick={emailMyCsv} disabled={emailingCsv} variant="outline" className="font-display tracking-wider">
+                  <Mail className="h-4 w-4 mr-2" />
+                  {emailingCsv ? "Sending…" : "Email me CSV"}
+                </Button>
+                <Button onClick={sendReportNow} disabled={sending} className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
+                  <Mail className="h-4 w-4 mr-2" />
+                  {sending ? "Sending…" : "Send Report Now"}
+                </Button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <Table>
@@ -310,6 +395,10 @@ const AdminPortal = () => {
               </TableBody>
             </Table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="people">
+          <PeopleManager profiles={profiles} reload={load} />
         </TabsContent>
       </Tabs>
       {selectedEmployee && (
