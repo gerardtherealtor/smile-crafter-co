@@ -677,13 +677,13 @@ const EmployeeWeekDialog = ({
                           <span className="font-medium">{jobName(e.job_id)}</span>
                           <span className="text-muted-foreground">
                             {formatTime12(e.clock_in)} – {formatTime12(e.clock_out)} · {formatHours(Number(e.hours))} {t("common.hours")}
-                            {e.break_minutes ? ` · ${e.break_minutes}m break` : ""}
+                            {e.break_minutes ? ` · ${t("employeeExtra.breakSuffix", { n: e.break_minutes })}` : ""}
                           </span>
                         </div>
                         {(cat || e.work_quantity != null) && (
                           <div className="text-xs text-foreground/80 mt-1">
                             {cat}
-                            {e.work_quantity != null ? ` · qty ${e.work_quantity}` : ""}
+                            {e.work_quantity != null ? ` · ${t("employeeExtra.qtySuffix", { n: e.work_quantity })}` : ""}
                           </div>
                         )}
                         {(e.notes_en || e.notes) && <div className="text-muted-foreground text-xs mt-1 whitespace-pre-wrap">{e.notes_en || e.notes}</div>}
