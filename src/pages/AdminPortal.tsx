@@ -111,7 +111,36 @@ const AdminPortal = () => {
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [viewWeek]);
+
+  // Employees missing any entry for the selected week (active, non-test only).
+  const missingEmployees = useMemo(() => {
+    const logged = new Set(entries.map((e) => e.user_id));
+    return profiles.filter((p) => p.is_active && !p.is_test && !logged.has(p.id));
+  }, [entries, profiles]);
+
+  const sendReportNow = async () => {
+    setSending(true);
+    const { data, error } = await supabase.functions.invoke("send-weekly-report", {
+      body: { week_start: viewWeek },
+    });
+    setSending(false);
+    if (error) toast.error(error.message);
+    else { toast.success(t("admin.weeklyReportSent")); load(); }
+  };
+
+  const emailMyCsv = async () => {
+    setEmailingCsv(true);
+    const { data, error } = await supabase.functions.invoke("email-weekly-csv", {
+      body: { week_start: viewWeek, week_end: viewSunday },
+    });
+    setEmailingCsv(false);
+    if (error || (data as any)?.error) {
+      toast.error(error?.message || (data as any)?.error || "Failed to send CSV");
+    } else {
+      toast.success(`CSV emailed${(data as any)?.recipient ? ` to ${(data as any).recipient}` : ""}`);
+    }
+  };
 
   // Aggregate per employee for current week
   const perEmployee = useMemo(() => {
