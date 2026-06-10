@@ -564,7 +564,7 @@ const EmployeeWeekDialog = ({
 
         <div className="mt-4 space-y-4">
           {loading ? (
-            <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
+            <StackedSkeleton rows={3} />
           ) : byDate.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">{t("admin.roster.nothingLogged")}</p>
           ) : byDate.map(([date, dayEntries]) => {
