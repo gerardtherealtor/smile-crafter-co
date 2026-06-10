@@ -374,7 +374,7 @@ const AdminPortal = () => {
                     key={r.id}
                     onClick={() => r.pdf_path && openPreview(r)}
                     className={r.pdf_path ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
-                    title={r.pdf_path ? "Click to preview report" : ""}
+                    title={r.pdf_path ? t("adminExtra.previewClick") : ""}
                   >
                     <TableCell>{formatDate(r.week_start)} – {formatDate(r.week_end)}</TableCell>
                     <TableCell className="text-right font-display">{formatHours(Number(r.total_regular_hours))}</TableCell>
@@ -383,7 +383,7 @@ const AdminPortal = () => {
                       {r.pdf_path ? (
                         <div className="flex justify-end gap-2">
                           <Button size="sm" variant="outline" onClick={() => openPreview(r)}>
-                            Preview
+                            {t("adminExtra.preview")}
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => downloadReport(r.pdf_path!)}>
                             <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
@@ -411,7 +411,7 @@ const AdminPortal = () => {
             <DialogTitle className="font-display tracking-wide">
               {previewReport && `${formatDate(previewReport.week_start)} – ${formatDate(previewReport.week_end)}`}
             </DialogTitle>
-            <DialogDescription className="sr-only">Weekly report PDF preview</DialogDescription>
+            <DialogDescription className="sr-only">{t("adminExtra.previewTitle")}</DialogDescription>
             {previewReport?.pdf_path && (
               <Button size="sm" variant="outline" className="mr-8" onClick={() => downloadReport(previewReport.pdf_path!)}>
                 <FileDown className="h-4 w-4 mr-1.5" /> {t("common.download")}
