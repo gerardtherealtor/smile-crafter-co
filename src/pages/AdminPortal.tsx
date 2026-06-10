@@ -782,7 +782,7 @@ const RosterManager = ({
         <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-3">
           <Input placeholder={t("admin.roster.placeholder")} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
           <Button type="submit" disabled={busy} className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider">
-            <Plus className="h-4 w-4 mr-1.5" /> Add
+            <Plus className="h-4 w-4 mr-1.5" /> {t("common.add")}
           </Button>
         </form>
       </div>
@@ -817,7 +817,7 @@ const RosterManager = ({
                     >
                       {r.full_name}
                     </button>
-                    {linked?.is_test && <span className="ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border align-middle">Test</span>}
+                    {linked?.is_test && <span className="ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border align-middle">{t("people.test")}</span>}
                     {!linked && <div className="text-xs text-muted-foreground">{t("admin.roster.notSignedUp")}</div>}
                   </TableCell>
                   <TableCell className="text-right">
@@ -847,6 +847,7 @@ const RosterManager = ({
 interface WorkCategory { id: string; name: string; sort_order: number; is_active: boolean }
 
 const CategoriesManager = () => {
+  const { t } = useTranslation();
   const [cats, setCats] = useState<WorkCategory[]>([]);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -876,7 +877,7 @@ const CategoriesManager = () => {
       .insert({ name: trimmed, sort_order: maxOrder + 10 });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    setName(""); toast.success("Category added"); load();
+    setName(""); toast.success(t("categories.added")); load();
   };
 
   const toggle = async (c: WorkCategory) => {
@@ -888,30 +889,30 @@ const CategoriesManager = () => {
   };
 
   const rename = async (c: WorkCategory) => {
-    const next = window.prompt("Rename category", c.name);
+    const next = window.prompt(t("categories.renamePrompt"), c.name);
     if (!next || next.trim() === c.name) return;
     const { error } = await supabase
       .from("work_categories")
       .update({ name: next.trim() })
       .eq("id", c.id);
-    if (error) toast.error(error.message); else { toast.success("Renamed"); load(); }
+    if (error) toast.error(error.message); else { toast.success(t("categories.renamed")); load(); }
   };
 
   const remove = async (c: WorkCategory) => {
-    if (!confirm(`Remove "${c.name}"? Past time entries keep this category as text.`)) return;
+    if (!confirm(t("categories.removeConfirm", { name: c.name }))) return;
     const { error } = await supabase.from("work_categories").delete().eq("id", c.id);
-    if (error) toast.error(error.message); else { toast.success("Removed"); load(); }
+    if (error) toast.error(error.message); else { toast.success(t("categories.removed")); load(); }
   };
 
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-border bg-card p-4 shadow-deep">
         <p className="text-sm text-muted-foreground mb-3">
-          Categories show up in the "What did you work on" dropdown on the My Time screen. Add new ones as work types come up.
+          {t("categories.helper")}
         </p>
         <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-3">
           <Input
-            placeholder="New category name"
+            placeholder={t("categories.newPlaceholder")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={120}
@@ -922,7 +923,7 @@ const CategoriesManager = () => {
             disabled={busy}
             className="bg-maple text-maple-foreground hover:bg-maple/90 font-display tracking-wider"
           >
-            <Plus className="h-4 w-4 mr-1.5" /> Add
+            <Plus className="h-4 w-4 mr-1.5" /> {t("common.add")}
           </Button>
         </form>
       </div>
@@ -931,27 +932,27 @@ const CategoriesManager = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Status</TableHead>
-              <TableHead className="text-right">Rename</TableHead>
-              <TableHead className="text-right">Remove</TableHead>
+              <TableHead>{t("categories.category")}</TableHead>
+              <TableHead className="text-right">{t("categories.status")}</TableHead>
+              <TableHead className="text-right">{t("categories.rename")}</TableHead>
+              <TableHead className="text-right">{t("categories.remove")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRowSkeleton cols={4} rows={3} />
             ) : cats.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No categories yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{t("categories.empty")}</TableCell></TableRow>
             ) : cats.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell className="text-right">
                   <Button size="sm" variant={c.is_active ? "outline" : "secondary"} onClick={() => toggle(c)}>
-                    {c.is_active ? "Active" : "Hidden"}
+                    {c.is_active ? t("categories.active") : t("categories.hidden")}
                   </Button>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button size="sm" variant="ghost" onClick={() => rename(c)}>Edit</Button>
+                  <Button size="sm" variant="ghost" onClick={() => rename(c)}>{t("common.edit")}</Button>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button size="sm" variant="ghost" onClick={() => remove(c)}>
