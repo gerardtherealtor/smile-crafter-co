@@ -67,7 +67,18 @@ const AdminPortal = () => {
 
 
   const monday = useMemo(() => weekStart(), []);
-  const sunday = useMemo(() => weekEnd(monday), [monday]);
+  const [viewWeek, setViewWeek] = useState<string>(monday);
+  const viewSunday = useMemo(() => weekEnd(viewWeek), [viewWeek]);
+  const isCurrentWeek = viewWeek === monday;
+  const [emailingCsv, setEmailingCsv] = useState(false);
+
+  const shiftWeek = (delta: number) => {
+    const [y, m, d] = viewWeek.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + delta * 7);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setViewWeek(`${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`);
+  };
 
   const load = async () => {
     setLoading(true);
