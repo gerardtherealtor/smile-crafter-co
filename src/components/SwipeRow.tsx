@@ -86,7 +86,7 @@ export const SwipeRow = ({
       reset();
       // Defer slightly so the snap-back doesn't fight the confirm dialog
       setTimeout(async () => {
-        const ok = window.confirm(deleteConfirmMessage);
+        const ok = window.confirm(confirmMsg);
         if (ok) {
           haptics.medium();
           await onDelete();
@@ -119,7 +119,7 @@ export const SwipeRow = ({
             style={{ opacity: intensity }}
           >
             <Pencil className="h-5 w-5" />
-            <span className="ml-2 font-display uppercase tracking-wider text-xs">Edit</span>
+            <span className="ml-2 font-display uppercase tracking-wider text-xs">{t("swipe.edit")}</span>
           </div>
         )}
         {showRight && onDelete && (
@@ -127,7 +127,7 @@ export const SwipeRow = ({
             className="ml-auto flex items-center justify-end pr-4 flex-1 bg-destructive/20 text-destructive"
             style={{ opacity: intensity }}
           >
-            <span className="mr-2 font-display uppercase tracking-wider text-xs">Delete</span>
+            <span className="mr-2 font-display uppercase tracking-wider text-xs">{t("swipe.delete")}</span>
             <Trash2 className="h-5 w-5" />
           </div>
         )}
