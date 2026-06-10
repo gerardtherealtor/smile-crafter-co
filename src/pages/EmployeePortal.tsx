@@ -18,6 +18,8 @@ import {
 } from "@/lib/time";
 import { Clock, Save, Calendar, FileDown, FileText, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import jsPDF from "jspdf";
+import { haptics } from "@/lib/haptics";
+import { SuccessCheck } from "@/components/SuccessCheck";
 
 interface Job { id: string; name: string }
 interface Entry {
