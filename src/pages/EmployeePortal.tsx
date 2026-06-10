@@ -136,7 +136,7 @@ const EmployeePortal = () => {
       }
     }
     setSaving(true);
-    // If the employee is using Spanish, translate notes to English for admin reports.
+    haptics.medium();
     const lang = (i18n.language || "en").toLowerCase();
     const translateNotes = async (txt: string): Promise<string | null> => {
       const trimmed = txt.trim();
