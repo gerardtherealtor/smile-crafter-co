@@ -848,7 +848,7 @@ const CategoriesManager = () => {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
+              <TableRowSkeleton cols={4} rows={3} />
             ) : cats.length === 0 ? (
               <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No categories yet.</TableCell></TableRow>
             ) : cats.map((c) => (
