@@ -216,6 +216,7 @@ const AdminPortal = () => {
           <TabsTrigger value="jobs" className="font-display tracking-wider"><Briefcase className="h-4 w-4 mr-1.5" />{t("admin.tabs.jobs")}</TabsTrigger>
           <TabsTrigger value="categories" className="font-display tracking-wider"><Tag className="h-4 w-4 mr-1.5" />Categories</TabsTrigger>
           <TabsTrigger value="reports" className="font-display tracking-wider"><FileDown className="h-4 w-4 mr-1.5" />{t("admin.tabs.reports")}</TabsTrigger>
+          <TabsTrigger value="people" className="font-display tracking-wider"><Users2 className="h-4 w-4 mr-1.5" />People</TabsTrigger>
         </TabsList>
 
         <TabsContent value="week" className="space-y-5">
