@@ -287,6 +287,7 @@ const EmployeePortal = () => {
         },
       }).catch(() => {});
       setShifts([blankShift()]);
+      try { if (user) localStorage.removeItem(`dnc_draft_entry_${user.id}`); } catch { /* ignore */ }
       await loadData();
     }
   };
