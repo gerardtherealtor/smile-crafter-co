@@ -65,6 +65,46 @@ const EmployeePortal = () => {
   });
   const [shifts, setShifts] = useState<Shift[]>([blankShift()]);
 
+  // ---- Draft auto-save (survives WebView reloads from backgrounding / phone calls) ----
+  const draftKey = user ? `dnc_draft_entry_${user.id}` : "";
+  const draftRestoredRef = useRef(false);
+  const shiftHasContent = (s: Shift) =>
+    !!(s.clockIn || s.clockOut || s.jobId || s.notes || s.breakMinutes || s.category || s.categoryOther || s.quantity);
+
+  // Restore once when user is known
+  useEffect(() => {
+    if (!user || draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+    try {
+      const raw = localStorage.getItem(`dnc_draft_entry_${user.id}`);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { date?: string; shifts?: Shift[] };
+      if (Array.isArray(parsed.shifts) && parsed.shifts.some(shiftHasContent)) {
+        setShifts(parsed.shifts);
+      }
+      if (typeof parsed.date === "string" && parsed.date >= monday && parsed.date <= maxDate) {
+        setDate(parsed.date);
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Persist on change
+  useEffect(() => {
+    if (!user || !draftRestoredRef.current) return;
+    try {
+      if (shifts.some(shiftHasContent)) {
+        localStorage.setItem(`dnc_draft_entry_${user.id}`, JSON.stringify({ date, shifts }));
+      } else {
+        localStorage.removeItem(`dnc_draft_entry_${user.id}`);
+      }
+    } catch {
+      // ignore
+    }
+  }, [user, date, shifts]);
+
   const updateShift = (i: number, patch: Partial<Shift>) =>
     setShifts((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   const addShift = () =>
