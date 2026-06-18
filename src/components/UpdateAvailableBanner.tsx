@@ -29,7 +29,10 @@ export const UpdateAvailableBanner = () => {
     let cancelled = false;
     (async () => {
       try {
-        if (!Capacitor.isNativePlatform()) return;
+        if (!Capacitor.isNativePlatform()) {
+          console.info("[UpdateBanner] skipped: not native platform");
+          return;
+        }
         const info = await App.getInfo();
         const installed = info.version;
         const platform = Capacitor.getPlatform();
@@ -41,18 +44,51 @@ export const UpdateAvailableBanner = () => {
           .limit(1)
           .maybeSingle();
 
-        if (error || !data || cancelled) return;
+        if (cancelled) return;
+        if (error) {
+          console.warn("[UpdateBanner] config fetch error", error);
+          return;
+        }
+        if (!data) {
+          console.warn("[UpdateBanner] no app_release_config row found");
+          return;
+        }
 
-        if (cmpVersions(installed, data.latest_version) >= 0) return;
+        const cmp = cmpVersions(installed, data.latest_version);
+        console.info("[UpdateBanner]", {
+          installed,
+          latest: data.latest_version,
+          cmp,
+          platform,
+        });
 
-        const dismissed = localStorage.getItem(DISMISS_KEY);
-        if (dismissed === data.latest_version) return;
+        if (cmp >= 0) {
+          // Already up-to-date — clear any stale dismissal so a future
+          // newer release isn't silently swallowed.
+          try {
+            localStorage.removeItem(DISMISS_KEY);
+          } catch {}
+          return;
+        }
+
+        const dismissed = (() => {
+          try {
+            return localStorage.getItem(DISMISS_KEY);
+          } catch {
+            return null;
+          }
+        })();
+        // Only honor dismissal for the EXACT same latest_version.
+        if (dismissed === data.latest_version) {
+          console.info("[UpdateBanner] dismissed for version", dismissed);
+          return;
+        }
 
         setLatest(data.latest_version);
         setUpdateUrl(platform === "ios" ? data.ios_update_url : data.android_update_url);
         setVisible(true);
-      } catch {
-        // silently ignore — never block app
+      } catch (e) {
+        console.warn("[UpdateBanner] unexpected error", e);
       }
     })();
     return () => {
