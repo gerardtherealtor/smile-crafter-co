@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
-import { Settings as SettingsIcon, Info } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Info } from "lucide-react";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
+
 
 // Web fallback version — bump when shipping web changes.
 const WEB_APP_VERSION = "1.0.4";
