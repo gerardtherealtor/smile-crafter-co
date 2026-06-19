@@ -1,13 +1,22 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, HardHat, Shield } from "lucide-react";
+import { LogOut, HardHat, Shield, Settings as SettingsIcon } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { SupportTicketButton } from "@/components/SupportTicketButton";
 import { SettingsSheet } from "@/components/SettingsSheet";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const PortalLayout = ({
   children,
@@ -18,14 +27,18 @@ export const PortalLayout = ({
   title: string;
   subtitle?: string;
 }) => {
-  const { signOut, role } = useAuth();
+  const { signOut, role, user } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
     navigate("/", { replace: true });
   };
+
+  const email = user?.email ?? "";
+  const initial = email ? email.charAt(0).toUpperCase() : "?";
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,16 +73,39 @@ export const PortalLayout = ({
             <Button asChild variant="ghost" size="sm" className="font-display tracking-wider">
               <Link to="/employee">{t("portal.myTime")}</Link>
             </Button>
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              size="sm"
-              className="border-maple/40 bg-maple/10 text-maple hover:bg-maple hover:text-maple-foreground font-display tracking-wider"
-            >
-              <LogOut className="h-4 w-4 mr-1.5" />
-              {t("portal.signOut")}
-            </Button>
-            <SettingsSheet />
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Account menu"
+                  className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-maple focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  <Avatar className="h-9 w-9 border border-maple/40">
+                    <AvatarFallback className="bg-maple text-maple-foreground font-display tracking-wider text-sm">
+                      {initial}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground truncate">
+                  {email || "Signed in"}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
+                  <SettingsIcon className="h-4 w-4 mr-2" />
+                  {t("portal.settings", { defaultValue: "Settings" })}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={handleLogout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {t("portal.signOut")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
           </div>
         </div>
       </header>
