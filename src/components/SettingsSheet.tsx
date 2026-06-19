@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
-import { Settings as SettingsIcon, Info } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Info } from "lucide-react";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
+
 
 // Web fallback version — bump when shipping web changes.
 const WEB_APP_VERSION = "1.0.4";
@@ -34,8 +33,13 @@ async function readVersionInfo(): Promise<VersionInfo> {
   return { label: `${WEB_APP_VERSION} (web)` };
 }
 
-export const SettingsSheet = () => {
-  const [open, setOpen] = useState(false);
+export const SettingsSheet = ({
+  open,
+  onOpenChange,
+}: {
+  open?: boolean;
+  onOpenChange?: (o: boolean) => void;
+}) => {
   const [version, setVersion] = useState<string>("Loading…");
   const platform =
     typeof Capacitor !== "undefined" && Capacitor?.getPlatform
@@ -53,17 +57,8 @@ export const SettingsSheet = () => {
   }, []);
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Settings"
-          className="text-foreground"
-        >
-          <SettingsIcon className="h-5 w-5" />
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+
       <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
         <SheetHeader>
           <SheetTitle className="font-display tracking-wider uppercase">
